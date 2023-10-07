@@ -1,3 +1,1 @@
-__all__ = ['sobrecargar', 'overload']
-
-from sobrecargar import *
+from .sobrecargar import *
