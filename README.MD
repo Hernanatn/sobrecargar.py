@@ -33,8 +33,52 @@ def mi_funcion(parametro1: float):
 ```
 
 ### Decorar un método de una clase:
+Dado que `sobrecargar` interfiere con el curso normal de compilación del código de las funciones, y que los métodos (funciones-miembro) suelen definirse al momento de definir la clase, decorar métodos requiere un sintaxis especial. Intentar usar `sobrecargar` de la siguiente forma:
 ```python
-from sobrecargar import overload
+from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
+class MiClase:
+    @overload
+    def mi_metodo(self, parametro1: int, parametro2: str):
+        # Código de la primera versión del método
+        ...
+
+    @overload
+    def mi_metodo(self, parametro1: float):
+        # Código de la segunda versión del método
+        ...
+```
+Producirá un error del estilo
+
+```
+[ERROR] AttributeError: module __main__ does not have a 'MiClase' attribute.
+```
+Esto sucede porque al momento en que `sobrecargar` intenta crear el diccionario de envíos de las distintas *sobrecargas* de `mi_metodo`, la clase de nombre `MiClase` aún no terminó de ser definida, y por lo tanto el compilador no sabe que existe.
+
+La solución es proveer una firma para la clase *antes* de intentar sobrecargar cualquiera de sus métodos. La firma no requiere más información que el nombre de la clase y su esquema de herencia.
+
+## Ejemplo de Uso
+# Función 'libre'
+```python
+@overload
+def suma(a: int, b: int):
+    return a + b
+
+@overload
+def suma(a: list[int]):
+    return sum([x for x in a])
+
+resultado1 = suma(1, 2)  # Llama a la primera versión de la función suma, con parámetros a y b : int
+>> 3
+
+resultado2 = suma([1,2,3,4,5])  # Llama a la segunda versión de la función suma, con parámetro a : List[int]
+>> 15
+```
+
+
+```python
+from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
+class MiClase: pass #Al proveer firma para la clase, se asegura que `sobrecargar` pueda referenciarla en tiempo de compilación
+
 class MiClase:
     @overload
     def mi_metodo(self, parametro1: int, parametro2: str):
@@ -47,7 +91,7 @@ class MiClase:
         ...
 ```
 
-## Métodos
+## Interfaz privada: métodos de `sobrecargar`
 
 ### `__new__(cls, funcion: Callable) -> 'sobrecargar'`
 Método especial que se encarga de crear una nueva instancia de la clase `sobrecargar` para cada versión de la función o método decorado. Se asegura de que solo haya una instancia de `sobrecargar` por nombre de función.
@@ -60,21 +104,6 @@ Método especial que permite que la instancia del decorador sea llamada como una
 
 ### `__get__(self, obj, tipoObj)`
 Método especial que se utiliza cuando el decorador se aplica a un método de una clase. Retorna una instancia de `MetodoSobrecargado` que se comporta como el método decorado y permite su llamada.
-
-## Ejemplo de Uso
-```python
-@overload
-def suma(a: int, b: int):
-    return a + b
-
-@overload
-def suma(a: float, b: float):
-    return a + b
-
-resultado1 = suma(1, 2)  # Llama a la primera versión de la función suma
-resultado2 = suma(1.0, 2.0)  # Llama a la segunda versión de la función suma
-
-```
 
 
 **Nota**: Esta documentación es un resumen de alto nivel. Para obtener más detalles sobre la implementación y el uso avanzado, se recomienda consultar el código fuente y realizar pruebas adicionales.
