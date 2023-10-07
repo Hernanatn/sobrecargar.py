@@ -14,7 +14,6 @@ pip install sobrecargar
 ``` 
 
 ## Uso Básico
-
 ### Decorar una función:
 Se puede emplear tanto `@sobrecargar` como `@overload` para decorar funciones o métodos.
 
@@ -56,6 +55,22 @@ Esto sucede porque al momento en que `sobrecargar` intenta crear el diccionario 
 
 La solución es proveer una firma para la clase *antes* de intentar sobrecargar cualquiera de sus métodos. La firma no requiere más información que el nombre de la clase y su esquema de herencia.
 
+```python
+from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
+class MiClase: pass #Al proveer firma para la clase, se asegura que `sobrecargar` pueda referenciarla en tiempo de compilación
+
+class MiClase:
+    @overload
+    def mi_metodo(self, parametro1: int, parametro2: str):
+        # Código de la primera versión del método
+        ...
+
+    @overload
+    def mi_metodo(self, parametro1: float):
+        # Código de la segunda versión del método
+        ...
+```
+
 ## Ejemplo de Uso
 # Función 'libre'
 ```python
@@ -72,23 +87,6 @@ resultado1 = suma(1, 2)  # Llama a la primera versión de la función suma, con 
 
 resultado2 = suma([1,2,3,4,5])  # Llama a la segunda versión de la función suma, con parámetro a : List[int]
 >> 15
-```
-
-
-```python
-from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
-class MiClase: pass #Al proveer firma para la clase, se asegura que `sobrecargar` pueda referenciarla en tiempo de compilación
-
-class MiClase:
-    @overload
-    def mi_metodo(self, parametro1: int, parametro2: str):
-        # Código de la primera versión del método
-        ...
-
-    @overload
-    def mi_metodo(self, parametro1: float):
-        # Código de la segunda versión del método
-        ...
 ```
 
 ## Interfaz privada: métodos de `sobrecargar`
