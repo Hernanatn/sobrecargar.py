@@ -10,7 +10,7 @@ Puede decargar e instalar `sobrecargar` utilizando el manejador de paquetes `PIP
 **Ejecute** el siguiente comando en la `terminal`:
 
 ``` Bash
-pip install Goog_API
+pip install sobrecargar
 ``` 
 
 ## Uso Básico
