@@ -150,7 +150,8 @@ class sobrecargar:
             cantidadPosicionales : int = len(posicionales)
             iteradorPosicionales : Iterator[tuple[_T,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales])
             vistaNominales : ItemsView[str,_T] = nominales.items()
-            if len(parametrosFuncion) == 0 and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue
+
+            if (len(parametrosFuncion) == 0 or not tieneVariables(parametrosFuncion))and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
 
             if validarMultiples(parametrosFuncion,cantidadPosicionales,iteradorPosicionales,vistaNominales):
                 return funcion(*posicionales,**nominales)
@@ -189,6 +190,12 @@ class sobrecargar:
     @staticmethod
     def devolverClase(metodo : Callable) -> type:
         return getattr(modules[metodo.__module__],metodo.__qualname__.split(".")[0])
+
+    @staticmethod
+    def tieneVariables(parametrosFuncion : OrderedDict[str,Parameter]) -> bool:
+        for parametro in parametrosFuncion.values():
+            if parametro.kind == Parameter.VAR_POSITIONAL or parametro.kind == Parameter.VAR_KEYWORD: return True
+        return False 
 
 overload = sobrecargar
 

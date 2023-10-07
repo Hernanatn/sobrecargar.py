@@ -25,6 +25,11 @@ class calculadora:
     def metClass(cls, y: str)-> str:
         return f"es str {y=}"
 
+    @sobrecargar
+    def potencia(self,x : int, y: int, z: str) -> str:
+        return f"x,y son int {x**y=} y z es str {z=}" 
+
+
 class calcuHija(calculadora):
 
     @sobrecargar
@@ -71,6 +76,7 @@ def main():
     print(f'{calNieta.potencia(2,("juan","pedro","pablo"))=}')
     print(f'{calNieta.potencia(2,(1,2,3))=}')
     print(f'{calNieta.potencia((1,2,3))=}')
+    print(f"{calNieta.potencia(1,5,"juan")}")
 
 if __name__ == '__main__':
     main()
