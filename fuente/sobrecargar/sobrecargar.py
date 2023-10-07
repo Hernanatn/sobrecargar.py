@@ -151,7 +151,7 @@ class sobrecargar:
             iteradorPosicionales : Iterator[tuple[_T,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales])
             vistaNominales : ItemsView[str,_T] = nominales.items()
 
-            if (len(parametrosFuncion) == 0 or not tieneVariables(parametrosFuncion))and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
+            if (len(parametrosFuncion) == 0 or not type(self).tieneVariables(parametrosFuncion))and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
 
             if validarMultiples(parametrosFuncion,cantidadPosicionales,iteradorPosicionales,vistaNominales):
                 return funcion(*posicionales,**nominales)
