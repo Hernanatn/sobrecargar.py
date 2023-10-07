@@ -29,7 +29,7 @@ class AP():
                 print(f"Y VO QUIEN SO? Plantate gato, no me dicen {self.nombre} por nada.")
             
             case 2:
-                print(f"Hola {nombreOtro}, me llamo {self.nombre}")
+                print(f"Hola {nombreOtro}, me llamo {self.nombre}. Te quiero")
 
             case _:
-                pass
+                self.saludo(nombreOtro)
