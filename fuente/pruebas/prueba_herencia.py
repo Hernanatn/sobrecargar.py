@@ -1,5 +1,6 @@
 from sobrecargar import sobrecargar
 
+# Se provee firma para las clases
 class calculadora: ...
 class calcuHija(calculadora): ...
 class calcuNieta(calcuHija): ...
@@ -29,14 +30,14 @@ class calculadora:
     def potencia(self,x : int, y: int, z: str) -> str:
         return f"x,y son int {x**y=} y z es str {z=}" 
 
-
 class calcuHija(calculadora):
 
     @sobrecargar
-    def potencia(self,x: int, y : tuple[str,...]) -> str:
+    def potencia(self,x: int, y : tuple) -> str:
 
+        
         cadenas = y
-        return f"{[z*x for z in cadenas]}"
+        return f"tuplaaaa sr{[z*x for z in cadenas]}"
 
 
     @sobrecargar
@@ -73,10 +74,11 @@ def main():
     print(f'{calNieta.potencia(1.0,"juan")=}')
     print(f'{calNieta.potencia(8,3)=}')
     print(f'{calNieta.potencia(4.0,"martin")=}')
-    print(f'{calNieta.potencia(2,("juan","pedro","pablo"))=}')
+    print(f'tuple str {calNieta.potencia(2,("juan","pedro","pablo"))=}')
     print(f'{calNieta.potencia(2,(1,2,3))=}')
     print(f'{calNieta.potencia((1,2,3))=}')
     print(f"{calNieta.potencia(1,5,"juan")}")
+
 
 if __name__ == '__main__':
     main()
