@@ -143,7 +143,6 @@ class sobrecargar:
                 return False
 
             for tipoRecibido, tipoEsperado in iteradorTipos:
-                print(f"[DEBUG]{parametroContenedor.annotation}{tipoEsperado=} | {tipoRecibido=}")
                 if tipoEsperado == None : 
                     return False
                 if tipoRecibido == tipoEsperado:
