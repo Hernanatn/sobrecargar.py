@@ -217,12 +217,13 @@ class sobrecargar:
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
             iteradorPosicionales : Iterator[tuple[_T,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
             vistaNominales : ItemsView[str,_T] = nominales.items()
-            if (len(parametrosFuncion) == 0 or not type(self).__tieneVariables(parametrosFuncion) or not type(self).__tienePorDefecto(parametrosFuncion))and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
+            if (len(parametrosFuncion) == 0 or not type(self).__tieneVariables(parametrosFuncion) or not type(self).__tienePorDefecto(parametrosFuncion)) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
+            
             if len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0 and not(type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion)):
                 puntajeLongitud += 3
             elif len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0:
                 puntajeLongitud += 2
-            elif 0 <= len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) <= cantidadPorDefecto:
+            elif (0 <= len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) <= cantidadPorDefecto) or (type(self).__tieneVariables(parametrosFuncion)):
                 puntajeLongitud += 1
             else:
                 continue
