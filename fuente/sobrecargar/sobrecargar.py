@@ -153,12 +153,14 @@ class sobrecargar:
                     return False
             return puntajeTipo
             
+
+        def validarVariable(valor : _T, parametroFuncion : Parameter) -> int | bool: ...
+
         def validarTipoParametro(valor : _T, parametroFuncion : Parameter) -> int | bool:
             puntajeTipo : int = 0
             #print(parametroFuncion)
             tipoEsperado : _T = parametroFuncion.annotation 
             tipoRecibido : _T = type(valor)
-
 
             esNoTipado : bool = (tipoEsperado == Any)
             porDefecto : _T = parametroFuncion.default
@@ -167,14 +169,26 @@ class sobrecargar:
             esPorDefecto : bool = valor is None and porDefecto is not parametroFuncion.empty
             paramEsSelf : bool =  parametroFuncion.name=='self' or parametroFuncion.name=='cls'
             
+            paramEsVariable   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL or parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
             paramEsContenedor : bool = hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequence) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapping) 
 
-            esDistintoTipo : bool = not validarContenedor(valor,parametroFuncion) if paramEsContenedor else not issubclass(tipoRecibido, tipoEsperado) 
+
+            if paramEsVariable and paramEsContenedor:
+                esDistintoTipo : bool = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
+            elif paramEsContenedor:
+                esDistintoTipo : bool = not validarContenedor(valor,parametroFuncion)
+            else:
+                esDistintoTipo : bool = not issubclass(tipoRecibido, tipoEsperado) 
+            
             
             if not esNoTipado and not esNulo and not paramEsSelf and not esPorDefecto and esDistintoTipo:
                 return False
-            else: 
-                if paramEsContenedor:
+            elif paramEsVariable and not paramEsContenedor: 
+                puntajeTipo+=1
+            else:
+                if paramEsVariable:
+                    puntajeTipo += 1
+                elif paramEsContenedor:
                     puntajeTipo+=validarContenedor(valor,parametroFuncion)
                 elif tipoRecibido == tipoEsperado:
                     puntajeTipo += 4
@@ -182,12 +196,11 @@ class sobrecargar:
                     puntajeTipo += 3
                 elif esNulo or esPorDefecto or paramEsSelf or esNoTipado: 
                     puntajeTipo += 2
+            
             return puntajeTipo
 
-        def validarFirma(parametrosFuncion : Parameter, cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
+        def validarFirma(parametrosFuncion : OrderedDict[str,Parameter], cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
             puntajeFirma : int = 0
-
-#            
 
             for valorPosicional, nombrePosicional in iteradorPosicionales:
                 estePuntaje: int | bool = validarTipoParametro(valorPosicional,parametrosFuncion[nombrePosicional])
@@ -195,7 +208,7 @@ class sobrecargar:
                     puntajeFirma += estePuntaje 
                 else:
                     return False
-
+            
             for nombreNominal, valorNominal in vistaNominales:
                 if nombreNominal not in parametrosFuncion: return False
                 estePuntaje: int | bool = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
@@ -204,6 +217,7 @@ class sobrecargar:
                 else:
                     return False
 
+            
             return puntajeFirma
 
         for firma, funcion in self.sobrecargas.items():
@@ -217,8 +231,11 @@ class sobrecargar:
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
             iteradorPosicionales : Iterator[tuple[_T,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
             vistaNominales : ItemsView[str,_T] = nominales.items()
-            if (len(parametrosFuncion) == 0 or not type(self).__tieneVariables(parametrosFuncion) or not type(self).__tienePorDefecto(parametrosFuncion)) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
+
+
             
+            if (len(parametrosFuncion) == 0 or not (type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion))) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
+        
             if len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0 and not(type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion)):
                 puntajeLongitud += 3
             elif len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0:
