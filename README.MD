@@ -70,4 +70,4 @@ resultado2 = suma([1,2,3,4,5])  # Llama a la segunda versión de la función sum
 
 **Nota**: Esta documentación es un resumen de alto nivel. Para obtener más detalles sobre la implementación y el uso avanzado, se recomienda consultar el código fuente, la documentación provista y realizar pruebas adicionales.
 
-## [Documentación]("/docs")
+## [Documentación](/docs)
