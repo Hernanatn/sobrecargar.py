@@ -3,7 +3,6 @@ README.md
 pyproject.toml
 setup.py
 sobrecargar/__init__.py
-sobrecargar/prueba-.py
 sobrecargar/sobrecargar.py
 sobrecargar.egg-info/PKG-INFO
 sobrecargar.egg-info/SOURCES.txt

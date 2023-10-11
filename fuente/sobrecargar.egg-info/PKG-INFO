@@ -1,9 +1,9 @@
 Metadata-Version: 2.1
 Name: sobrecargar
-Version: 0.1.8
+Version: 0.1.9
 Summary: Sobrecarga de métodos y funciones para Python 3.
 Home-page: https://github.com/Hernanatn/sobrecargar.py
-Download-URL: https://pypi.org/project/sobrecargar/0.1.8/#files
+Download-URL: https://pypi.org/project/sobrecargar/0.1.9/#files
 Author: Hernán A. Teszkiewicz Novick
 Author-email: "Hernán A.T.N." <herni@cajadeideas.ar>
 License: MIT
@@ -33,35 +33,14 @@ def mi_funcion(parametro1: int, parametro2: str):
     # Código de la primera versión de la función
     ...
 
-@sobrecarga
+@sobrecargar
 def mi_funcion(parametro1: float):
     # Código de la segunda versión de la función
     ...
 ```
 
 ### Decorar un método de una clase:
-Dado que `sobrecargar` interfiere con el curso normal de compilación del código de las funciones, y que los métodos (funciones-miembro) suelen definirse al momento de definir la clase, decorar métodos requiere un sintaxis especial. Intentar usar `sobrecargar` de la siguiente forma:
-```python
-from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
-class MiClase:
-    @overload
-    def mi_metodo(self, parametro1: int, parametro2: str):
-        # Código de la primera versión del método
-        ...
-
-    @overload
-    def mi_metodo(self, parametro1: float):
-        # Código de la segunda versión del método
-        ...
-```
-Producirá un error del estilo
-
-```
-[ERROR] AttributeError: module __main__ does not have a 'MiClase' attribute.
-```
-Esto sucede porque al momento en que `sobrecargar` intenta crear el diccionario de envíos de las distintas *sobrecargas* de `mi_metodo`, la clase de nombre `MiClase` aún no terminó de ser definida, y por lo tanto el compilador no sabe que existe.
-
-La solución es proveer una firma para la clase *antes* de intentar sobrecargar cualquiera de sus métodos. La firma no requiere más información que el nombre de la clase y su esquema de herencia.
+Para decorar métodos internos de clases se debe proveer una firma previa para el tipo.
 
 ```python
 from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
@@ -96,20 +75,3 @@ resultado1 = suma(1, 2)  # Llama a la primera versión de la función suma, con 
 resultado2 = suma([1,2,3,4,5])  # Llama a la segunda versión de la función suma, con parámetro a : List[int]
 >> 15
 ```
-
-## Interfaz privada: métodos de `sobrecargar`
-
-### `__new__(cls, funcion: Callable) -> 'sobrecargar'`
-Método especial que se encarga de crear una nueva instancia de la clase `sobrecargar` para cada versión de la función o método decorado. Se asegura de que solo haya una instancia de `sobrecargar` por nombre de función.
-
-### `__init__(self, funcion: Callable) -> None`
-Constructor de la clase `sobrecargar`. Se encarga de inicializar el diccionario de sobrecargas y registrar la versión actual de la función o método decorado.
-
-### `__call__(self, *posicionales, **nominales)`
-Método especial que permite que la instancia del decorador sea llamada como una función. Se encarga de validar los parámetros proporcionados y seleccionar la versión adecuada de la función o método decorado para su ejecución.
-
-### `__get__(self, obj, tipoObj)`
-Método especial que se utiliza cuando el decorador se aplica a un método de una clase. Retorna una instancia de `MetodoSobrecargado` que se comporta como el método decorado y permite su llamada.
-
-
-**Nota**: Esta documentación es un resumen de alto nivel. Para obtener más detalles sobre la implementación y el uso avanzado, se recomienda consultar el código fuente y realizar pruebas adicionales.

@@ -97,8 +97,11 @@ class sobrecargar:
     def __call__(self,*posicionales, **nominales) -> Any:
         """
         Método  que permite que la instancia del decorador sea llamada como
-        una función. El motor del módulo. Se encarga de validar los parámetros proporcionados y seleccionar
-        la versión adecuada de la función o método decorado para su ejecución.
+        una función. El motor del módulo. Se encarga de validar los parámetros
+        proporcionados y construir una tupla de 'candidatos' de las funciones
+        que se adecúan a los parámetros propocionados. Prioriza la sobrecarga
+        que mejor se ajusta a los tipos y cantidad de argumentos. Si varios
+        candidatos coinciden, propaga el resultado del más específico. 
 
         Args:
             *posicionales: Argumentos posicionales pasados a la función o método.
@@ -106,6 +109,7 @@ class sobrecargar:
 
         Returns:
             Any: El resultado de la versión seleccionada de la función o método decorado.
+
         Raises:
             TypeError: Si no existe una sobrecarga compatible para los parámetros
             proporcionados.
@@ -152,9 +156,6 @@ class sobrecargar:
                 else:
                     return False
             return puntajeTipo
-            
-
-        def validarVariable(valor : _T, parametroFuncion : Parameter) -> int | bool: ...
 
         def validarTipoParametro(valor : _T, parametroFuncion : Parameter) -> int | bool:
             puntajeTipo : int = 0
@@ -184,19 +185,24 @@ class sobrecargar:
             if not esNoTipado and not esNulo and not paramEsSelf and not esPorDefecto and esDistintoTipo:
                 return False
             elif paramEsVariable and not paramEsContenedor: 
-                puntajeTipo+=1
+                puntajeTipo += 1
             else:
-                if paramEsVariable:
-                    puntajeTipo += 1
+                if paramEsVariable and paramEsContenedor:
+                    if tipoRecibido == tipoEsperado.__args__[0]:
+                        puntajeTipo +=2
+                    elif issubclass(tipoRecibido,tipoEsperado.__args__[0]):
+                        puntajeTipo +=1  
                 elif paramEsContenedor:
-                    puntajeTipo+=validarContenedor(valor,parametroFuncion)
+                    puntajeTipo += validarContenedor(valor,parametroFuncion)
                 elif tipoRecibido == tipoEsperado:
                     puntajeTipo += 4
                 elif issubclass(tipoRecibido,tipoEsperado):
                     puntajeTipo += 3
-                elif esNulo or esPorDefecto or paramEsSelf or esNoTipado: 
+                elif esPorDefecto:  
                     puntajeTipo += 2
-            
+                elif esNulo or paramEsSelf or esNoTipado:
+                    puntajeTipo += 1
+
             return puntajeTipo
 
         def validarFirma(parametrosFuncion : OrderedDict[str,Parameter], cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
