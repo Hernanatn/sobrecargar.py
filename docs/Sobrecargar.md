@@ -4,6 +4,8 @@
 `sobrecargar` es un módulo de Python que incluye una única clase homonima, la cual provee la implementación de un @decorador universal, que permite definir múltiples versiones de una función o método con diferentes conjuntos de parámetros y tipos. Esto permite crear una sobrecarga de funciones similar a la que se encuentra en otros lenguajes de programación, como C++.
 
 ## Interfaz Pública
+`sobrecargar` tiene una interfaz pública minima. Para sobrecargar una función se emplea el `@` decorador, y esta puede ser llamada sin más incordio que utilizando la sintaxis regular de python `()`
+
 ### Decorar una función:
 Se puede emplear tanto `@sobrecargar` como `@overload` para decorar funciones o métodos.
 
