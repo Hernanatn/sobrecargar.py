@@ -20,7 +20,8 @@ __email__ = "herni@cajadeideas.ar"
 __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature, Signature, Parameter, ismethod
-from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any
+from types import MappingProxyType
+from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic
 from collections.abc import Sequence, Mapping
 from collections import namedtuple
 from functools import partial
@@ -29,10 +30,11 @@ from itertools import zip_longest
 import __main__
 
 if version_info < (3, 9):
-    raise ImportError("Modulo 'sobrecargar' 'overloading' rqueire Python 3.9 o superior.")
+    raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
     
-    # Interfaz Pública 
-class sobrecargar:
+
+# Interfaz Pública 
+class sobrecargar():
     """
     Clase que actúa como decorador de tipo-función, permitiendo definir múltiples
     versiones de una función o método con diferentes conjuntos de parámetros y tipos.
@@ -93,6 +95,8 @@ class sobrecargar:
                         self.sobrecargas.update(sobrecargaBase.sobrecargas)
 
         self.sobrecargas[firma] = funcionSubyacente
+        if not self.__doc__: self.__doc__ = ""
+        self.__doc__ += f"\n{funcion.__doc__ or ''}"
             
     def __call__(self,*posicionales, **nominales) -> Any:
         """
@@ -114,14 +118,15 @@ class sobrecargar:
             TypeError: Si no existe una sobrecarga compatible para los parámetros
             proporcionados.
         """
-        _T = TypeVar("_T")
+        _C = TypeVar("_C", bound=Sequence)
+        _T = TypeVar("_T", bound=Any)
         Candidato : namedtuple = namedtuple('Candidato',['puntaje','objetoFuncion',"firmaFuncion"])
         candidatos : List[Candidato] = []
 
-        def validarContenedor(valor : _T, parametroContenedor : Parameter) -> int | bool:
+        def validarContenedor(valor : _C, parametroContenedor : Parameter) -> int | bool:
             puntajeTipo : int = 0
 
-            anotacionContenedor : _T = parametroContenedor.annotation
+            anotacionContenedor = parametroContenedor.annotation
 
             if not hasattr(anotacionContenedor,"__origin__") or not hasattr(anotacionContenedor,"__args__") :
                 puntajeTipo += 1
@@ -129,7 +134,7 @@ class sobrecargar:
 
             if not issubclass(type(valor),anotacionContenedor.__origin__): 
                 return False
-            argumentosContenedor : Tuple[_T] = anotacionContenedor.__args__
+            argumentosContenedor : Tuple[type[_C]] = anotacionContenedor.__args__
             tieneElipsis : bool = Ellipsis in argumentosContenedor
             tieneUnicoTipo : bool = len(argumentosContenedor) == 1 or tieneElipsis
 
@@ -138,10 +143,11 @@ class sobrecargar:
                 listaAuxiliarContenedor[1] = listaAuxiliarContenedor[0]
                 argumentosContenedor = tuple(listaAuxiliarContenedor)
 
+            iteradorTipos : Iterator
             if tieneUnicoTipo:
-                iteradorTipos : Iterator = zip_longest((type(t) for t in valor),argumentosContenedor,fillvalue=argumentosContenedor[0])
+                iteradorTipos = zip_longest((type(t) for t in valor),argumentosContenedor,fillvalue=argumentosContenedor[0])
             else:
-                iteradorTipos : Iterator = zip_longest((type(t) for t in valor),argumentosContenedor)
+                iteradorTipos = zip_longest((type(t) for t in valor),argumentosContenedor)
 
             if not issubclass(type(valor[0]), argumentosContenedor[0]):
                 return False
@@ -160,8 +166,8 @@ class sobrecargar:
         def validarTipoParametro(valor : _T, parametroFuncion : Parameter) -> int | bool:
             puntajeTipo : int = 0
             #print(parametroFuncion)
-            tipoEsperado : _T = parametroFuncion.annotation 
-            tipoRecibido : _T = type(valor)
+            tipoEsperado = parametroFuncion.annotation 
+            tipoRecibido : type[_T] = type(valor)
 
             esNoTipado : bool = (tipoEsperado == Any)
             porDefecto : _T = parametroFuncion.default
@@ -173,13 +179,13 @@ class sobrecargar:
             paramEsVariable   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL or parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
             paramEsContenedor : bool = hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequence) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapping) 
 
-
+            esDistintoTipo : bool
             if paramEsVariable and paramEsContenedor:
-                esDistintoTipo : bool = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
+                esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
             elif paramEsContenedor:
-                esDistintoTipo : bool = not validarContenedor(valor,parametroFuncion)
+                esDistintoTipo = not validarContenedor(valor,parametroFuncion)
             else:
-                esDistintoTipo : bool = not issubclass(tipoRecibido, tipoEsperado) 
+                esDistintoTipo = not issubclass(tipoRecibido, tipoEsperado) 
             
             
             if not esNoTipado and not esNulo and not paramEsSelf and not esPorDefecto and esDistintoTipo:
@@ -205,11 +211,12 @@ class sobrecargar:
 
             return puntajeTipo
 
-        def validarFirma(parametrosFuncion : OrderedDict[str,Parameter], cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
+        def validarFirma(parametrosFuncion : MappingProxyType[str,Parameter], cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
             puntajeFirma : int = 0
 
+            estePuntaje : int | bool
             for valorPosicional, nombrePosicional in iteradorPosicionales:
-                estePuntaje: int | bool = validarTipoParametro(valorPosicional,parametrosFuncion[nombrePosicional])
+                estePuntaje = validarTipoParametro(valorPosicional,parametrosFuncion[nombrePosicional])
                 if estePuntaje:
                     puntajeFirma += estePuntaje 
                 else:
@@ -217,7 +224,7 @@ class sobrecargar:
             
             for nombreNominal, valorNominal in vistaNominales:
                 if nombreNominal not in parametrosFuncion: return False
-                estePuntaje: int | bool = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
+                estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
                 if estePuntaje:
                     puntajeFirma += estePuntaje 
                 else:
@@ -230,13 +237,13 @@ class sobrecargar:
 
             puntajeLongitud : int = 0
             
-            parametrosFuncion : OrderedDict[str,Parameter] = firma.parameters
+            parametrosFuncion : MappingProxyType[str,Parameter] = firma.parameters
             
             cantidadPosicionales    : int = len(parametrosFuncion) if type(self).__tieneVarPos(parametrosFuncion) else len(posicionales) 
             cantidadNominales       : int = len({nom : nominales[nom] for nom in parametrosFuncion if nom in nominales}) if (type(self).__tieneVarNom(parametrosFuncion) or type(self).__tieneSoloNom(parametrosFuncion)) else len(nominales)
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
-            iteradorPosicionales : Iterator[tuple[_T,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
-            vistaNominales : ItemsView[str,_T] = nominales.items()
+            iteradorPosicionales : Iterator[tuple[Any,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
+            vistaNominales : ItemsView[str,Any] = nominales.items()
 
 
             
@@ -268,9 +275,10 @@ class sobrecargar:
         else:
             raise TypeError(f"[ERROR] No existen sobrecargas de {funcion.__name__} para los parámetros provistos:\n {[type(posicional) for posicional in posicionales]} {[(k,type(nominal)) for k,nominal in nominales.items()]}\n Sobrecargas soportadas: {[dict(fir.parameters) for fir in self.sobrecargas.keys()]}")
     
-    def __get__(self, obj, tipoObj) -> 'MetodoSobrecargado':
+    def __get__(self, obj, tipoObj):
         #
         class MetodoSobrecargado:
+            __doc__ = self.__doc__
             __call__ = partial(self.__call__, obj) if obj is not None else partial(self.__call__, tipoObj)
 
         return MetodoSobrecargado()
@@ -307,32 +315,32 @@ class sobrecargar:
 
 
     @staticmethod
-    def __tieneVariables(parametrosFuncion : OrderedDict[str,Parameter]) -> bool:
+    def __tieneVariables(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
         for parametro in parametrosFuncion.values():
             if sobrecargar.__tieneVarNom(parametrosFuncion) or sobrecargar.__tieneVarPos(parametrosFuncion): return True
         return False
 
     @staticmethod
-    def __tieneVarPos(parametrosFuncion : OrderedDict[str,Parameter]) -> bool:
+    def __tieneVarPos(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
         for parametro in parametrosFuncion.values():
             if parametro.kind == Parameter.VAR_POSITIONAL: return True
         return False
 
     @staticmethod
-    def __tieneVarNom(parametrosFuncion : OrderedDict[str,Parameter]) -> bool:
+    def __tieneVarNom(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
         for parametro in parametrosFuncion.values():
             if parametro.kind == Parameter.VAR_KEYWORD: return True
         return False
 
     @staticmethod
-    def __tienePorDefecto(parametrosFuncion : OrderedDict[str,Parameter]) -> int | bool:
+    def __tienePorDefecto(parametrosFuncion : MappingProxyType[str,Parameter]) -> int | bool:
         cuentaDefecto : int = 0
         for parametro in parametrosFuncion.values():
             if parametro.default != parametro.empty: cuentaDefecto+=1
         return cuentaDefecto if cuentaDefecto else False 
     
     @staticmethod
-    def __tieneSoloNom(parametrosFuncion : OrderedDict[str,Parameter]) -> bool:
+    def __tieneSoloNom(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
         for parametro in parametrosFuncion.values():
             if parametro.kind == Parameter.KEYWORD_ONLY: return True
         return False
