@@ -14,7 +14,7 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "0.1"
+__version__ = "1.0"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
