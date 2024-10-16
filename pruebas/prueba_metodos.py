@@ -33,7 +33,7 @@ class Calculadora():
         self.modo = modoAngulo
 
  
-    def sumar(self,*numeros : Unpack[int]):
+    def sumar(self,*numeros : Unpack[tuple[int]]):
          return sum([num for num in numeros])
 
     @sobrecargar
