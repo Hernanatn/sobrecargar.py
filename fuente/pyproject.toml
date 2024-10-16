@@ -16,7 +16,6 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-licence = "MIT"
 
 [project.urls]
 "Homepage" = "https://github.com/Hernanatn/sobrecargar.py"

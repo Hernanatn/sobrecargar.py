@@ -1,12 +1,11 @@
 Metadata-Version: 2.1
 Name: sobrecargar
-Version: 0.1.9
+Version: 1.0
 Summary: Sobrecarga de métodos y funciones para Python 3.
 Home-page: https://github.com/Hernanatn/sobrecargar.py
 Download-URL: https://pypi.org/project/sobrecargar/0.1.9/#files
 Author: Hernán A. Teszkiewicz Novick
 Author-email: "Hernán A.T.N." <herni@cajadeideas.ar>
-License: MIT
 Project-URL: Homepage, https://github.com/Hernanatn/sobrecargar.py
 Classifier: Programming Language :: Python :: 3
 Classifier: License :: OSI Approved :: MIT License

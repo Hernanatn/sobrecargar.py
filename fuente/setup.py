@@ -6,7 +6,6 @@ setup(
     version='1.0',
     author           = 'Hernán A. Teszkiewicz Novick',
     author_email     = 'herni@cajadeideas.ar',
-    license          =  'MIT'    ,
     url= 'https://github.com/Hernanatn/sobrecargar.py',
     download_url     =  'https://pypi.org/project/sobrecargar/0.1.9/#files',
     packages=['sobrecargar'],
