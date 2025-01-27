@@ -1,5 +1,12 @@
 
+
 # Sobrecargar
+
+[![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
+[![Versión: 1.0](https://img.shields.io/badge/version-v1.0-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
+[![Verisón de Python: 3.12](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/downloads/release/python-3120/)
+[![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-lightgrey.svg)](LICENSE)
+
 
 ## Descripción
 `sobrecargar` es un módulo de Python que incluye una única clase homonima, la cual provee la implementación de un @decorador universal, que permite definir múltiples versiones de una función o método con diferentes conjuntos de parámetros y tipos. Esto permite crear una sobrecarga de funciones similar a la que se encuentra en otros lenguajes de programación, como C++.
