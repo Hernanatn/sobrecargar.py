@@ -21,7 +21,7 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature, Signature, Parameter, ismethod
 from types import MappingProxyType
-from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic
+from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic, Optional
 from collections.abc import Sequence, Mapping
 from collections import namedtuple
 from functools import partial
@@ -68,7 +68,7 @@ class sobrecargar():
             cls._sobrecargadas[nombre] = super().__new__(sobrecargar) 
         return  cls._sobrecargadas[nombre]
 
-    def __init__(self,funcion : Callable) -> None:
+    def __init__(self,funcion : Callable,*, cache : bool = False) -> None:
         """
         Inicializador. Se encarga de inicializar el diccionario
         de sobrecargas (si no hay ya uno) y registrar en él la versión actual de la función o método decorado.
@@ -76,9 +76,11 @@ class sobrecargar():
         Args:
             funcion (Callable): La función o método decorado.
         """
-       
+
         if not hasattr(self,'sobrecargas'):
             self.sobrecargas : dict[Signature, Callable] = {}
+
+        self._cache : Optional[dict[tuple[tuple[type[Any], ...], dict[str, type[Any]]], Callable[..., Any]]] = {} if cache else None
 
         firma : Signature
         funcionSubyacente : Callable
@@ -118,6 +120,15 @@ class sobrecargar():
             TypeError: Si no existe una sobrecarga compatible para los parámetros
             proporcionados.
         """
+
+        if self._cache is not None:
+            parametros = (
+                tuple(type(p) for p in posicionales),
+                {n: type(v) for n, v in nominales.items()},
+            )
+            if parametros in self._cache.keys():
+                return self._cache[parametros](*posicionales,**nominales)
+
         _C = TypeVar("_C", bound=Sequence)
         _T = TypeVar("_T", bound=Any)
         Candidato : namedtuple = namedtuple('Candidato',['puntaje','objetoFuncion',"firmaFuncion"])
@@ -165,7 +176,7 @@ class sobrecargar():
 
         def validarTipoParametro(valor : _T, parametroFuncion : Parameter) -> int | bool:
             puntajeTipo : int = 0
-            #print(parametroFuncion)
+
             tipoEsperado = parametroFuncion.annotation 
             tipoRecibido : type[_T] = type(valor)
 
@@ -244,11 +255,8 @@ class sobrecargar():
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
             iteradorPosicionales : Iterator[tuple[Any,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
             vistaNominales : ItemsView[str,Any] = nominales.items()
-
-
             
             if (len(parametrosFuncion) == 0 or not (type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion))) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
-        
             if len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0 and not(type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion)):
                 puntajeLongitud += 3
             elif len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0:
@@ -263,7 +271,6 @@ class sobrecargar():
             if puntajeValidacionFirma:
                 esteCandidato : Candidato = Candidato(puntaje=(puntajeLongitud+2*puntajeValidacionFirma),objetoFuncion=funcion,firmaFuncion=firma)
                 candidatos.append(esteCandidato)
-                #return funcion(*posicionales,**nominales)
             else:
                 continue
         if candidatos:
@@ -271,6 +278,14 @@ class sobrecargar():
             if len(candidatos)>1:
                 candidatos.sort(key= lambda c: c.puntaje, reverse=True)
             mejorFuncion = candidatos[0].objetoFuncion
+            if self._cache is not None:
+                parametros = (
+                    tuple(type(p) for p in posicionales),
+                    {n: type(v) for n, v in nominales.items()},
+                )
+                self._cache.update({
+                    parametros : mejorFuncion
+                })
             return mejorFuncion(*posicionales,**nominales)
         else:
             raise TypeError(f"[ERROR] No existen sobrecargas de {funcion.__name__} para los parámetros provistos:\n {[type(posicional) for posicional in posicionales]} {[(k,type(nominal)) for k,nominal in nominales.items()]}\n Sobrecargas soportadas: {[dict(fir.parameters) for fir in self.sobrecargas.keys()]}")
@@ -305,12 +320,11 @@ class sobrecargar():
         return funcion.__name__ != funcion.__qualname__ and "<locals>" not in funcion.__qualname__.split(".")
 
     @staticmethod
-    def esAnidada(funcion : Callable) -> bool:
+    def __esAnidada(funcion : Callable) -> bool:
         return funcion.__name__ != funcion.__qualname__ and "<locals>" in funcion.__qualname__.split(".")
 
     @staticmethod
     def __devolverClase(metodo : Callable) -> type:
-        #rint(f"[DEBUG] LLAMADA A devolverclase {metodo.__qualname__}")
         return getattr(modules[metodo.__module__],metodo.__qualname__.split(".")[0])
 
 
