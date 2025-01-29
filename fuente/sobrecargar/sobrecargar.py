@@ -21,20 +21,21 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature, Signature, Parameter, ismethod
 from types import MappingProxyType
-from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic, Optional
+from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic, Optional, _UnpackGenericAlias
 from collections.abc import Sequence, Mapping
 from collections import namedtuple
 from functools import partial
 from sys import modules, version_info
 from itertools import zip_longest
-import __main__
+from sobrecarga_diferida import SobrecargaDiferida
 
 if version_info < (3, 9):
     raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
     
+import __main__
 
 # Interfaz Pública 
-class sobrecargar():
+class sobrecargar(metaclass=SobrecargaDiferida):
     """
     Clase que actúa como decorador de tipo-función, permitiendo definir múltiples
     versiones de una función o método con diferentes conjuntos de parámetros y tipos.
@@ -187,12 +188,18 @@ class sobrecargar():
             esPorDefecto : bool = valor is None and porDefecto is not parametroFuncion.empty
             paramEsSelf : bool =  parametroFuncion.name=='self' or parametroFuncion.name=='cls'
             
-            paramEsVariable   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL or parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
+            paramEsVarPos   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL 
+            paramEsVarNom   : bool = parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
+            paramEsVariable   : bool = paramEsVarPos or paramEsVarNom
             paramEsContenedor : bool = hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequence) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapping) 
 
             esDistintoTipo : bool
-            if paramEsVariable and paramEsContenedor:
+            if paramEsVariable and paramEsContenedor and paramEsVarPos:
+                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _UnpackGenericAlias else tipoEsperado
                 esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
+            elif paramEsVariable and paramEsContenedor and paramEsVarNom:
+                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _UnpackGenericAlias else tipoEsperado
+                esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[1]) 
             elif paramEsContenedor:
                 esDistintoTipo = not validarContenedor(valor,parametroFuncion)
             else:
@@ -204,10 +211,15 @@ class sobrecargar():
             elif paramEsVariable and not paramEsContenedor: 
                 puntajeTipo += 1
             else:
-                if paramEsVariable and paramEsContenedor:
+                if paramEsVariable and paramEsContenedor and paramEsVarPos:
                     if tipoRecibido == tipoEsperado.__args__[0]:
                         puntajeTipo +=2
                     elif issubclass(tipoRecibido,tipoEsperado.__args__[0]):
+                        puntajeTipo +=1  
+                elif paramEsVariable and paramEsContenedor and paramEsVarNom:
+                    if tipoRecibido == tipoEsperado.__args__[1]:
+                        puntajeTipo +=2
+                    elif issubclass(tipoRecibido,tipoEsperado.__args__[1]):
                         puntajeTipo +=1  
                 elif paramEsContenedor:
                     puntajeTipo += validarContenedor(valor,parametroFuncion)
@@ -234,8 +246,16 @@ class sobrecargar():
                     return False
             
             for nombreNominal, valorNominal in vistaNominales:
-                if nombreNominal not in parametrosFuncion: return False
-                estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
+                if nombreNominal not in parametrosFuncion and type(self).__tieneVarNom(parametrosFuncion):
+                    varNom : Parameter | None = next((p for p in parametrosFuncion.values() if p.kind == p.VAR_KEYWORD),None)
+                    if varNom is not None:
+                        estePuntaje = validarTipoParametro(valorNominal,varNom)
+                    else:
+                        return False
+                elif nombreNominal not in parametrosFuncion:
+                        return False
+                else:
+                    estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
                 if estePuntaje:
                     puntajeFirma += estePuntaje 
                 else:
@@ -325,6 +345,7 @@ class sobrecargar():
 
     @staticmethod
     def __devolverClase(metodo : Callable) -> type:
+        import __main__
         return getattr(modules[metodo.__module__],metodo.__qualname__.split(".")[0])
 
 
@@ -363,8 +384,83 @@ overload = sobrecargar
 
 
 
-if __name__ == '__main__': print(__doc__)
+if __name__ == '__main__': 
+    print(__doc__)    
+    import unittest
+    from typing import Unpack
 
+    # Funciones globales decoradas
+    @sobrecargar
+    def funcion_libre(a: int, b: int = 10):
+        """Suma dos enteros."""
+        return a + b
+
+    @sobrecargar
+    def funcion_libre(a: str, *args: int):
+        """Concatena un string con la suma de argumentos."""
+        return a + str(sum(args))
+
+    @sobrecargar
+    def funcion_libre(a: float, *args : Unpack[tuple[int]]):
+        """Multiplica el flotante por el valor de una clave específica."""
+        return a * sum(a for a in args)
+
+    # Clase con métodos decorados
+    class MiClase:...
+    class MiClase:
+        @sobrecargar
+        def metodo(self, a: int, b: int):
+            """Resta dos enteros."""
+            return a - b
+
+        @sobrecargar
+        def metodo(self, a: int, *args: Unpack[tuple[int]]):
+            """Multiplica el primer número por la suma de argumentos."""
+            return a * sum(args)
+
+        @sobrecargar
+        def metodo(self, a: str, b: str = "default"):
+            """Concatena dos cadenas."""
+            return a + b
+
+    class PruebasSobrecargar(unittest.TestCase):
+        def test_funcion_libre(self):
+            """Prueba las versiones sobrecargadas de una función 'libre'."""
+            # Versión con enteros
+            self.assertEqual(funcion_libre(5, 15), 20)
+            self.assertEqual(funcion_libre(7), 17)
+
+            # Versión con string y *args
+            self.assertEqual(funcion_libre("suma: ", 1, 2, 3), "suma: 6")
+            self.assertEqual(funcion_libre("suma: "), "suma: 0")
+
+            # Versión con float y **kwargs
+            self.assertEqual(funcion_libre(2.5, 4), 10.0)
+            self.assertEqual(funcion_libre(3.0), 0)
+
+        def test_metodo_mi_clase(self):
+            """Prueba las versiones sobrecargadas de un método miembro."""
+            instancia = MiClase()
+
+            # Versión con enteros
+            self.assertEqual(instancia.metodo(10, 5), 5)
+
+            # Versión con entero y *args
+            self.assertEqual(instancia.metodo(3, 1, 2, 3), 18)
+            self.assertEqual(instancia.metodo(2), 0)
+
+            # Versión con strings
+            self.assertEqual(instancia.metodo("Hola, "), "Hola, default")
+            self.assertEqual(instancia.metodo("Hola, ", "Mundo"), "Hola, Mundo")
+
+        def test_errores(self):
+            """Prueba errores en invocaciones no soportadas."""
+            with self.assertRaises(TypeError):
+                funcion_libre(1, "cadena")
+            with self.assertRaises(TypeError):
+                MiClase().metodo(1.5, 2)
+
+    unittest.main()
 """
 Licencia MIT
 
