@@ -17,5 +17,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+dependencies = [
+    'typing_extensions; python_version < "3.11"',
+]
+
 [project.urls]
 "Homepage" = "https://github.com/Hernanatn/sobrecargar.py"
