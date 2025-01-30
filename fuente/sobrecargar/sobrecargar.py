@@ -21,7 +21,7 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature, Signature, Parameter, ismethod
 from types import MappingProxyType
-from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Self, Any, List, Tuple, Iterable, Generic, Optional, _UnpackGenericAlias
+from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Any, List, Tuple, Iterable, Generic, Optional, _UnpackGenericAlias
 from collections.abc import Sequence, Mapping
 from collections import namedtuple
 from functools import partial
@@ -29,6 +29,11 @@ from sys import modules, version_info
 from itertools import zip_longest
 from sobrecarga_diferida import SobrecargaDiferida
 
+if version_info < (3, 11):
+    from typing_extensions import Self
+else:
+    from typing import Self
+    
 if version_info < (3, 9):
     raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
     
