@@ -21,7 +21,7 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro
 from types import MappingProxyType
-from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, _UnpackGenericAlias as _DesempacarAliasGenérico
+from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, _UnpackGenericAlias as _DesempacarAliasGenérico, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
 from collections.abc import Sequence as Sequencia, Mapping as Mapeo
 from collections import namedtuple as tuplanominada
 from functools import partial as parcial
@@ -42,7 +42,7 @@ class _SobrecargaDiferida(type):
 
         class _Diferida(object): 
             def __new__(cls, posicionales, nominales):
-                print(clase,cls,posicionales,nominales)
+                #print(clase,cls,posicionales,nominales)
                 objeto = clase.__new__(clase,*posicionales,*nominales)
                 if not hasattr(objeto, "_Diferida__parametros_iniciales") or getattr(objeto, "_Diferida__parametros_iniciales") is None:
                     objeto.__parametros_iniciales = []
@@ -188,7 +188,10 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
                 puntajeTipo += 1
                 return puntajeTipo
 
-            if not issubclass(type(valor),anotacionContenedor.__origin__): 
+            if obtenerOrigen(anotacionContenedor) is Union :
+                if not issubclass(type(valor),obtenerArgumentos(anotacionContenedor)):
+                    return False
+            elif not issubclass(type(valor),anotacionContenedor.__origin__): 
                 return False
             argumentosContenedor : Tupla[type[_C]] = anotacionContenedor.__args__
             tieneElipsis : bool = Ellipsis in argumentosContenedor
@@ -235,7 +238,8 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
             paramEsVarPos   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL 
             paramEsVarNom   : bool = parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
             paramEsVariable   : bool = paramEsVarPos or paramEsVarNom
-            paramEsContenedor : bool = hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo) 
+            paramEsUnion : bool = hasattr(tipoEsperado,"__origin__") and obtenerOrigen(tipoEsperado) is Union
+            paramEsContenedor : bool = (hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo)) and not paramEsUnion
 
             esDistintoTipo : bool
             if paramEsVariable and paramEsContenedor and paramEsVarPos:
@@ -244,6 +248,8 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
             elif paramEsVariable and paramEsContenedor and paramEsVarNom:
                 tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _DesempacarAliasGenérico else tipoEsperado
                 esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[1]) 
+            elif paramEsUnion:
+                esDistintoTipo = not issubclass(tipoRecibido,obtenerArgumentos(tipoEsperado))
             elif paramEsContenedor:
                 esDistintoTipo = not validarContenedor(valor,parametroFuncion)
             else:

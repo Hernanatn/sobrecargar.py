@@ -1,6 +1,6 @@
-from sobrecargar import sobrecargar
+from sobrecargar.sobrecargar import sobrecargar
 import unittest
-from typing import Unpack
+from typing import Unpack, Union
 
 # Funciones globales decoradas
 @sobrecargar
@@ -14,9 +14,14 @@ def funcion_libre(a: str, *args: int):
     return a + str(sum(args))
 
 @sobrecargar
-def funcion_libre(a: float, *args : Unpack[tuple[int]]):
+def funcion_libre(a: float, *args : *tuple[int]):
     """Multiplica el flotante por el valor de una clave específica."""
     return a * sum(a for a in args)
+
+@sobrecargar
+def funcion_libre(a: float, b: Union[float,int] ):
+    """Multiplica el flotante por el valor de una clave específica."""
+    return a * b
 
 # Clase con métodos decorados
 class MiClase:...
@@ -27,7 +32,7 @@ class MiClase:
         return a - b
 
     @sobrecargar
-    def metodo(self, a: int, *args: Unpack[tuple[int]]):
+    def metodo(self, a: int, *args: *tuple[int]):
         """Multiplica el primer número por la suma de argumentos."""
         return a * sum(args)
 
