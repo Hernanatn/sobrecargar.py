@@ -13,6 +13,7 @@ Classifier: Operating System :: OS Independent
 Requires-Python: >=3.9
 Description-Content-Type: text/markdown
 License-File: LICENSE
+Requires-Dist: typing_extensions; python_version < "3.11"
 Dynamic: author
 Dynamic: download-url
 Dynamic: home-page
