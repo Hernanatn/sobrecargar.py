@@ -4,7 +4,6 @@ pyproject.toml
 setup.py
 sobrecargar/__init__.py
 sobrecargar/py.typed
-sobrecargar/sobrecarga_diferida.py
 sobrecargar/sobrecargar.py
 sobrecargar.egg-info/PKG-INFO
 sobrecargar.egg-info/SOURCES.txt
