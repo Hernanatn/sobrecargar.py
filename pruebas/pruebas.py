@@ -1,4 +1,4 @@
-from sobrecargar.sobrecargar import sobrecargar
+from sobrecargar import sobrecargar
 import unittest
 from typing import Unpack, Union
 
