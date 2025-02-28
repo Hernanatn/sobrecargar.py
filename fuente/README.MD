@@ -39,11 +39,11 @@ def mi_funcion(parametro1: float):
 ```
 
 ### Decorar un método de una clase:
-Para decorar métodos internos de clases se debe proveer una firma previa para el tipo.
+> [!TIP]  
+> Desde la versión 3.0.2 los métodos (funciones miembro) se *sobrecargan* de la misma forma que las "funciones libres".
 
 ```python
 from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
-class MiClase: pass #Al proveer firma para la clase, se asegura que `sobrecargar` pueda referenciarla en tiempo de compilación
 
 class MiClase:
     @overload

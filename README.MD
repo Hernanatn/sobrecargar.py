@@ -3,7 +3,7 @@
 # Sobrecargar
 
 [![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
-[![Versión: 1.0](https://img.shields.io/badge/version-v1.0-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
+[![Versión: 3.0.2](https://img.shields.io/badge/version-v3.0.2-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
 [![Verisón de Python: 3.12](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/downloads/release/python-3120/)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-lightgrey.svg)](LICENSE)
 
@@ -39,11 +39,11 @@ def mi_funcion(parametro1: float):
 ```
 
 ### Decorar un método de una clase:
-Para decorar métodos internos de clases se debe proveer una firma previa para el tipo.
+> [!TIP]  
+> Desde la versión 3.0.2 los métodos (funciones miembro) se *sobrecargan* de la misma forma que las "funciones libres".
 
 ```python
 from sobrecargar import overload # 'ovearload' es un alias pre-definido para 'sobrecargar'
-class MiClase: pass #Al proveer firma para la clase, se asegura que `sobrecargar` pueda referenciarla en tiempo de compilación
 
 class MiClase:
     @overload
