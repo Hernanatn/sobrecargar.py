@@ -19,27 +19,67 @@ __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
 
-from inspect import signature, Signature, Parameter, ismethod
+from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro
 from types import MappingProxyType
-from typing import Callable, TypeVar, Iterator, ItemsView, OrderedDict, Any, List, Tuple, Iterable, Generic, Optional
-from collections.abc import Sequence, Mapping
-from collections import namedtuple
-from functools import partial
-from sys import modules, version_info
-from itertools import zip_longest
-import __main__
+from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, _UnpackGenericAlias as _DesempacarAliasGenérico, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
+from collections.abc import Sequence as Sequencia, Mapping as Mapeo
+from collections import namedtuple as tuplanominada
+from functools import partial as parcial
+from sys import modules as módulos, version_info as info_versión
+from itertools import zip_longest as zipearmáslargo
 
-if version_info < (3, 11):
+if info_versión < (3, 11):
     from typing_extensions import Self
 else:
     from typing import Self
     
-if version_info < (3, 9):
+if info_versión < (3, 9):
     raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
     
+class _SobrecargaDiferida(type):
+    def __init__(clase, nombre, ancestros, diccionario):
+        super().__init__(nombre,ancestros,diccionario)
 
-# Interfaz Pública 
-class sobrecargar():
+        class _Diferida(object): 
+            def __new__(cls, posicionales, nominales):
+                #print(clase,cls,posicionales,nominales)
+                objeto = clase.__new__(clase,*posicionales,*nominales)
+                if not hasattr(objeto, "_Diferida__parametros_iniciales") or getattr(objeto, "_Diferida__parametros_iniciales") is None:
+                    objeto.__parametros_iniciales = []
+                objeto.__parametros_iniciales.append((posicionales,nominales))
+                objeto.__class__ = cls
+                return objeto
+
+            def __inicializar__(self):
+                iniciales = self.__parametros_iniciales
+                del self.__dict__['_Diferida__parametros_iniciales']
+                super().__setattr__('__class__',clase)
+                for posicionales,nominales in iniciales:
+                    self.__init__(*posicionales,**nominales)
+            def __get__(self, obj, tipoObj):
+                self.__inicializar__()
+                return self.__get__(obj,tipoObj)
+            def __call__(self, *posicionales,**nominales):
+                self.__inicializar__()
+                return self.__call__(*posicionales,**nominales)
+    
+        _Diferida.__name__ = f"{clase.__name__}_Diferida"
+        _Diferida.__qualname__ = f"{clase.__qualname__}_Diferida"
+        clase._Diferida = _Diferida
+        
+    def __call__(cls, *posicionales, **nominales):    
+        return cls._Diferida(posicionales, nominales)
+    
+    def __instancecheck__(cls, instancia):
+        return super().__instancecheck__(instancia) or isinstance(instancia, cls._Diferida)
+
+    def __subclasscheck__(cls, subclase):
+        return super().__subclasscheck__(subclase) or (subclase == cls._Diferida)
+
+
+import __main__
+
+class sobrecargar(metaclass=_SobrecargaDiferida):
     """
     Clase que actúa como decorador de tipo-función, permitiendo definir múltiples
     versiones de una función o método con diferentes conjuntos de parámetros y tipos.
@@ -53,59 +93,59 @@ class sobrecargar():
 
     Atributos de Instancia:
         sobrecargas (dict): Un diccionario que almacena las sobrecargas definidas para
-        la función o método decorado. Las claves son objetos Signature que representan
+        la función o método decorado. Las claves son objetos Firma que representan
         las firmas de las sobrecargas, y los valores son las funciones o métodos
         correspondientes.
     """
     _sobrecargadas : dict[str, 'sobrecargar'] = {}
 
-    def __new__(cls, funcion : Callable)-> 'sobrecargar':
+    def __new__(cls, función : Llamable)-> 'sobrecargar':
         """
         Constructor. Se crea una única instancia por nombre de función.
         Args:
-            funcion (Callable): La función o método que se va a decorar.
+            función (Llamable): La función o método que se va a decorar.
         Returns:
             sobrecargar: La instancia de la clase 'sobrecargar' asociada al nombre de la función provista.
         """
 
-        nombre : str = cls.__nombreCompleto(funcion)
+        nombre : str = cls.__nombreCompleto(función)
         if nombre not in cls._sobrecargadas.keys(): 
             cls._sobrecargadas[nombre] = super().__new__(sobrecargar) 
         return  cls._sobrecargadas[nombre]
 
-    def __init__(self,funcion : Callable,*, cache : bool = False) -> None:
+    def __init__(self,función : Llamable,*, cache : bool = False) -> None:
         """
         Inicializador. Se encarga de inicializar el diccionario
         de sobrecargas (si no hay ya uno) y registrar en él la versión actual de la función o método decorado.
 
         Args:
-            funcion (Callable): La función o método decorado.
+            función (Llamable): La función o método decorado.
         """
 
         if not hasattr(self,'sobrecargas'):
-            self.sobrecargas : dict[Signature, Callable] = {}
+            self.sobrecargas : dict[Firma, Llamable] = {}
 
-        self._cache : Optional[dict[tuple[tuple[type[Any], ...], dict[str, type[Any]]], Callable[..., Any]]] = {} if cache else None
+        self._cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], dict[str, type[Cualquiera]]], Llamable[..., Cualquiera]]] = {} if cache else None
 
-        firma : Signature
-        funcionSubyacente : Callable
-        firma, funcionSubyacente = sobrecargar.__desenvolver(funcion)
+        firma : Firma
+        funcionSubyacente : Llamable
+        firma, funcionSubyacente = sobrecargar.__desenvolver(función)
 
-        if type(self).__esMetodo(funcion):
-            clase : type = type(self).__devolverClase(funcion)
+        if type(self).__esMetodo(función):
+            clase : type = type(self).__devolverClase(función)
             for ancestro in clase.__mro__:
                 for base in ancestro.__bases__:
                     if base is object : break
-                    nombreCompletoMetodo : str = f"{base.__module__}.{base.__name__}.{funcion.__name__}"
+                    nombreCompletoMetodo : str = f"{base.__module__}.{base.__name__}.{función.__name__}"
                     if nombreCompletoMetodo in type(self)._sobrecargadas.keys():
                         sobrecargaBase : 'sobrecargar' = type(self)._sobrecargadas[nombreCompletoMetodo]
                         self.sobrecargas.update(sobrecargaBase.sobrecargas)
 
         self.sobrecargas[firma] = funcionSubyacente
         if not self.__doc__: self.__doc__ = ""
-        self.__doc__ += f"\n{funcion.__doc__ or ''}"
+        self.__doc__ += f"\n{función.__doc__ or ''}"
             
-    def __call__(self,*posicionales, **nominales) -> Any:
+    def __call__(self,*posicionales, **nominales) -> Cualquiera:
         """
         Método  que permite que la instancia del decorador sea llamada como
         una función. El motor del módulo. Se encarga de validar los parámetros
@@ -119,7 +159,7 @@ class sobrecargar():
             **nominales: Argumentos nominales pasados a la función o método.
 
         Returns:
-            Any: El resultado de la versión seleccionada de la función o método decorado.
+            Cualquiera: El resultado de la versión seleccionada de la función o método decorado.
 
         Raises:
             TypeError: Si no existe una sobrecarga compatible para los parámetros
@@ -134,12 +174,12 @@ class sobrecargar():
             if parametros in self._cache.keys():
                 return self._cache[parametros](*posicionales,**nominales)
 
-        _C = TypeVar("_C", bound=Sequence)
-        _T = TypeVar("_T", bound=Any)
-        Candidato : namedtuple = namedtuple('Candidato',['puntaje','objetoFuncion',"firmaFuncion"])
-        candidatos : List[Candidato] = []
+        _C = TipoVariable("_C", bound=Sequencia)
+        _T = TipoVariable("_T", bound=Cualquiera)
+        Candidato : Tupla = tuplanominada('Candidato',['puntaje','objetoFuncion',"firmaFuncion"])
+        candidatos : Lista[Candidato] = []
 
-        def validarContenedor(valor : _C, parametroContenedor : Parameter) -> int | bool:
+        def validarContenedor(valor : _C, parametroContenedor : Parámetro) -> int | bool:
             puntajeTipo : int = 0
 
             anotacionContenedor = parametroContenedor.annotation
@@ -148,9 +188,12 @@ class sobrecargar():
                 puntajeTipo += 1
                 return puntajeTipo
 
-            if not issubclass(type(valor),anotacionContenedor.__origin__): 
+            if obtenerOrigen(anotacionContenedor) is Union :
+                if not issubclass(type(valor),obtenerArgumentos(anotacionContenedor)):
+                    return False
+            elif not issubclass(type(valor),anotacionContenedor.__origin__): 
                 return False
-            argumentosContenedor : Tuple[type[_C]] = anotacionContenedor.__args__
+            argumentosContenedor : Tupla[type[_C]] = anotacionContenedor.__args__
             tieneElipsis : bool = Ellipsis in argumentosContenedor
             tieneUnicoTipo : bool = len(argumentosContenedor) == 1 or tieneElipsis
 
@@ -159,11 +202,11 @@ class sobrecargar():
                 listaAuxiliarContenedor[1] = listaAuxiliarContenedor[0]
                 argumentosContenedor = tuple(listaAuxiliarContenedor)
 
-            iteradorTipos : Iterator
+            iteradorTipos : Iterador
             if tieneUnicoTipo:
-                iteradorTipos = zip_longest((type(t) for t in valor),argumentosContenedor,fillvalue=argumentosContenedor[0])
+                iteradorTipos = zipearmáslargo((type(t) for t in valor),argumentosContenedor,fillvalue=argumentosContenedor[0])
             else:
-                iteradorTipos = zip_longest((type(t) for t in valor),argumentosContenedor)
+                iteradorTipos = zipearmáslargo((type(t) for t in valor),argumentosContenedor)
 
             if not issubclass(type(valor[0]), argumentosContenedor[0]):
                 return False
@@ -179,25 +222,34 @@ class sobrecargar():
                     return False
             return puntajeTipo
 
-        def validarTipoParametro(valor : _T, parametroFuncion : Parameter) -> int | bool:
+        def validarTipoParametro(valor : _T, parametroFuncion : Parámetro) -> int | bool:
             puntajeTipo : int = 0
 
             tipoEsperado = parametroFuncion.annotation 
             tipoRecibido : type[_T] = type(valor)
 
-            esNoTipado : bool = (tipoEsperado == Any)
+            esNoTipado : bool = (tipoEsperado == Cualquiera)
             porDefecto : _T = parametroFuncion.default
             esNulo : bool = valor is None and porDefecto is None
 
             esPorDefecto : bool = valor is None and porDefecto is not parametroFuncion.empty
             paramEsSelf : bool =  parametroFuncion.name=='self' or parametroFuncion.name=='cls'
             
-            paramEsVariable   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL or parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
-            paramEsContenedor : bool = hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequence) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapping) 
+            paramEsVarPos   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL 
+            paramEsVarNom   : bool = parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
+            paramEsVariable   : bool = paramEsVarPos or paramEsVarNom
+            paramEsUnion : bool = hasattr(tipoEsperado,"__origin__") and obtenerOrigen(tipoEsperado) is Union
+            paramEsContenedor : bool = (hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo)) and not paramEsUnion
 
             esDistintoTipo : bool
-            if paramEsVariable and paramEsContenedor:
+            if paramEsVariable and paramEsContenedor and paramEsVarPos:
+                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _DesempacarAliasGenérico else tipoEsperado
                 esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
+            elif paramEsVariable and paramEsContenedor and paramEsVarNom:
+                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _DesempacarAliasGenérico else tipoEsperado
+                esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[1]) 
+            elif paramEsUnion:
+                esDistintoTipo = not issubclass(tipoRecibido,obtenerArgumentos(tipoEsperado))
             elif paramEsContenedor:
                 esDistintoTipo = not validarContenedor(valor,parametroFuncion)
             else:
@@ -209,10 +261,15 @@ class sobrecargar():
             elif paramEsVariable and not paramEsContenedor: 
                 puntajeTipo += 1
             else:
-                if paramEsVariable and paramEsContenedor:
+                if paramEsVariable and paramEsContenedor and paramEsVarPos:
                     if tipoRecibido == tipoEsperado.__args__[0]:
                         puntajeTipo +=2
                     elif issubclass(tipoRecibido,tipoEsperado.__args__[0]):
+                        puntajeTipo +=1  
+                elif paramEsVariable and paramEsContenedor and paramEsVarNom:
+                    if tipoRecibido == tipoEsperado.__args__[1]:
+                        puntajeTipo +=2
+                    elif issubclass(tipoRecibido,tipoEsperado.__args__[1]):
                         puntajeTipo +=1  
                 elif paramEsContenedor:
                     puntajeTipo += validarContenedor(valor,parametroFuncion)
@@ -227,7 +284,7 @@ class sobrecargar():
 
             return puntajeTipo
 
-        def validarFirma(parametrosFuncion : MappingProxyType[str,Parameter], cantidadPosicionales : int, iteradorPosicionales : Iterator[tuple], vistaNominales : ItemsView) -> int |bool:
+        def validarFirma(parametrosFuncion : MappingProxyType[str,Parámetro], cantidadPosicionales : int, iteradorPosicionales : Iterador[tuple], vistaNominales : VistaElementos) -> int |bool:
             puntajeFirma : int = 0
 
             estePuntaje : int | bool
@@ -239,8 +296,16 @@ class sobrecargar():
                     return False
             
             for nombreNominal, valorNominal in vistaNominales:
-                if nombreNominal not in parametrosFuncion: return False
-                estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
+                if nombreNominal not in parametrosFuncion and type(self).__tieneVarNom(parametrosFuncion):
+                    varNom : Parámetro | None = next((p for p in parametrosFuncion.values() if p.kind == p.VAR_KEYWORD),None)
+                    if varNom is not None:
+                        estePuntaje = validarTipoParametro(valorNominal,varNom)
+                    else:
+                        return False
+                elif nombreNominal not in parametrosFuncion:
+                        return False
+                else:
+                    estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
                 if estePuntaje:
                     puntajeFirma += estePuntaje 
                 else:
@@ -249,17 +314,17 @@ class sobrecargar():
             
             return puntajeFirma
 
-        for firma, funcion in self.sobrecargas.items():
+        for firma, función in self.sobrecargas.items():
 
             puntajeLongitud : int = 0
             
-            parametrosFuncion : MappingProxyType[str,Parameter] = firma.parameters
+            parametrosFuncion : MappingProxyType[str,Parámetro] = firma.parameters
             
             cantidadPosicionales    : int = len(parametrosFuncion) if type(self).__tieneVarPos(parametrosFuncion) else len(posicionales) 
             cantidadNominales       : int = len({nom : nominales[nom] for nom in parametrosFuncion if nom in nominales}) if (type(self).__tieneVarNom(parametrosFuncion) or type(self).__tieneSoloNom(parametrosFuncion)) else len(nominales)
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
-            iteradorPosicionales : Iterator[tuple[Any,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
-            vistaNominales : ItemsView[str,Any] = nominales.items()
+            iteradorPosicionales : Iterador[tuple[Cualquiera,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
+            vistaNominales : VistaElementos[str,Cualquiera] = nominales.items()
             
             if (len(parametrosFuncion) == 0 or not (type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion))) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
             if len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0 and not(type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion)):
@@ -274,7 +339,7 @@ class sobrecargar():
             
             puntajeValidacionFirma : int | bool = validarFirma(parametrosFuncion,cantidadPosicionales,iteradorPosicionales,vistaNominales) 
             if puntajeValidacionFirma:
-                esteCandidato : Candidato = Candidato(puntaje=(puntajeLongitud+2*puntajeValidacionFirma),objetoFuncion=funcion,firmaFuncion=firma)
+                esteCandidato : Candidato = Candidato(puntaje=(puntajeLongitud+2*puntajeValidacionFirma),objetoFuncion=función,firmaFuncion=firma)
                 candidatos.append(esteCandidato)
             else:
                 continue
@@ -293,83 +358,87 @@ class sobrecargar():
                 })
             return mejorFuncion(*posicionales,**nominales)
         else:
-            raise TypeError(f"[ERROR] No existen sobrecargas de {funcion.__name__} para los parámetros provistos:\n {[type(posicional) for posicional in posicionales]} {[(k,type(nominal)) for k,nominal in nominales.items()]}\n Sobrecargas soportadas: {[dict(fir.parameters) for fir in self.sobrecargas.keys()]}")
+            raise TypeError(f"[ERROR] No existen sobrecargas de {función.__name__} para los parámetros provistos:\n {[type(posicional) for posicional in posicionales]} {[(k,type(nominal)) for k,nominal in nominales.items()]}\n Sobrecargas soportadas: {[dict(fir.parameters) for fir in self.sobrecargas.keys()]}")
     
     def __get__(self, obj, tipoObj):
         #
         class MetodoSobrecargado:
             __doc__ = self.__doc__
-            __call__ = partial(self.__call__, obj) if obj is not None else partial(self.__call__, tipoObj)
+            __call__ = parcial(self.__call__, obj) if obj is not None else parcial(self.__call__, tipoObj)
 
         return MetodoSobrecargado()
 
 
-    # Interfaz Privada 
 
-    @staticmethod
-    def __desenvolver(funcion : Callable) -> tuple[Signature, Callable]:
-        while hasattr(funcion, '__func__'):
-            funcion = funcion.__func__
-        while hasattr(funcion, '__wrapped__'):
-            funcion = funcion.__wrapped__
 
-        firma : Signature = signature(funcion)
-        return (firma,funcion)
 
-    @staticmethod
-    def __nombreCompleto(funcion : Callable) -> str :
-        return f"{funcion.__module__}.{funcion.__qualname__}"
-
-    @staticmethod
-    def __esMetodo(funcion : Callable) -> bool :
-        return funcion.__name__ != funcion.__qualname__ and "<locals>" not in funcion.__qualname__.split(".")
-
-    @staticmethod
-    def __esAnidada(funcion : Callable) -> bool:
-        return funcion.__name__ != funcion.__qualname__ and "<locals>" in funcion.__qualname__.split(".")
-
-    @staticmethod
-    def __devolverClase(metodo : Callable) -> type:
-        return getattr(modules[metodo.__module__],metodo.__qualname__.split(".")[0])
 
 
     @staticmethod
-    def __tieneVariables(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
+    def __desenvolver(función : Llamable) -> tuple[Firma, Llamable]:
+        while hasattr(función, '__func__'):
+            función = función.__func__
+        while hasattr(función, '__wrapped__'):
+            función = función.__wrapped__
+
+        firma : Firma = obtenerfirma(función)
+        return (firma,función)
+
+    @staticmethod
+    def __nombreCompleto(función : Llamable) -> str :
+        return f"{función.__module__}.{función.__qualname__}"
+
+    @staticmethod
+    def __esMetodo(función : Llamable) -> bool :
+        return función.__name__ != función.__qualname__ and "<locals>" not in función.__qualname__.split(".")
+
+    @staticmethod
+    def __esAnidada(función : Llamable) -> bool:
+        return función.__name__ != función.__qualname__ and "<locals>" in función.__qualname__.split(".")
+
+    @staticmethod
+    def __devolverClase(metodo : Llamable) -> type:
+        import __main__
+        return getattr(módulos[metodo.__module__],metodo.__qualname__.split(".")[0])
+
+
+    @staticmethod
+    def __tieneVariables(parametrosFuncion : MappingProxyType[str,Parámetro]) -> bool:
         for parametro in parametrosFuncion.values():
             if sobrecargar.__tieneVarNom(parametrosFuncion) or sobrecargar.__tieneVarPos(parametrosFuncion): return True
         return False
 
     @staticmethod
-    def __tieneVarPos(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
+    def __tieneVarPos(parametrosFuncion : MappingProxyType[str,Parámetro]) -> bool:
         for parametro in parametrosFuncion.values():
-            if parametro.kind == Parameter.VAR_POSITIONAL: return True
+            if parametro.kind == Parámetro.VAR_POSITIONAL: return True
         return False
 
     @staticmethod
-    def __tieneVarNom(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
+    def __tieneVarNom(parametrosFuncion : MappingProxyType[str,Parámetro]) -> bool:
         for parametro in parametrosFuncion.values():
-            if parametro.kind == Parameter.VAR_KEYWORD: return True
+            if parametro.kind == Parámetro.VAR_KEYWORD: return True
         return False
 
     @staticmethod
-    def __tienePorDefecto(parametrosFuncion : MappingProxyType[str,Parameter]) -> int | bool:
+    def __tienePorDefecto(parametrosFuncion : MappingProxyType[str,Parámetro]) -> int | bool:
         cuentaDefecto : int = 0
         for parametro in parametrosFuncion.values():
             if parametro.default != parametro.empty: cuentaDefecto+=1
         return cuentaDefecto if cuentaDefecto else False 
     
     @staticmethod
-    def __tieneSoloNom(parametrosFuncion : MappingProxyType[str,Parameter]) -> bool:
+    def __tieneSoloNom(parametrosFuncion : MappingProxyType[str,Parámetro]) -> bool:
         for parametro in parametrosFuncion.values():
-            if parametro.kind == Parameter.KEYWORD_ONLY: return True
+            if parametro.kind == Parámetro.KEYWORD_ONLY: return True
         return False
 
 overload = sobrecargar
 
-
-
-if __name__ == '__main__': print(__doc__)
-
+if __name__ == '__main__': 
+    print(__doc__)    
+    import unittest
+    from typing import Unpack
 """
 Licencia MIT
 

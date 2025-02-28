@@ -1,5 +1,6 @@
+from sobrecargar.sobrecargar import sobrecargar
 import unittest
-from sobrecargar import sobrecargar
+from typing import Unpack, Union
 
 # Funciones globales decoradas
 @sobrecargar
@@ -13,11 +14,17 @@ def funcion_libre(a: str, *args: int):
     return a + str(sum(args))
 
 @sobrecargar
-def funcion_libre(a: float, **kwargs: int):
+def funcion_libre(a: float, *args : *tuple[int]):
     """Multiplica el flotante por el valor de una clave específica."""
-    return a * kwargs.get("clave", 1)
+    return a * sum(a for a in args)
+
+@sobrecargar
+def funcion_libre(a: float, b: Union[float,int] ):
+    """Multiplica el flotante por el valor de una clave específica."""
+    return a * b
 
 # Clase con métodos decorados
+class MiClase:...
 class MiClase:
     @sobrecargar
     def metodo(self, a: int, b: int):
@@ -25,7 +32,7 @@ class MiClase:
         return a - b
 
     @sobrecargar
-    def metodo(self, a: int, *args: int):
+    def metodo(self, a: int, *args: *tuple[int]):
         """Multiplica el primer número por la suma de argumentos."""
         return a * sum(args)
 
@@ -46,8 +53,8 @@ class PruebasSobrecargar(unittest.TestCase):
         self.assertEqual(funcion_libre("suma: "), "suma: 0")
 
         # Versión con float y **kwargs
-        self.assertEqual(funcion_libre(2.5, clave=4), 10.0)
-        self.assertEqual(funcion_libre(3.0), 3.0)
+        self.assertEqual(funcion_libre(2.5, 4), 10.0)
+        self.assertEqual(funcion_libre(3.0), 0)
 
     def test_metodo_mi_clase(self):
         """Prueba las versiones sobrecargadas de un método miembro."""

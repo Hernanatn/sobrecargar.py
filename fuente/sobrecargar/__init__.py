@@ -11,4 +11,4 @@ Derechos de autor (c) 2023 Hernán A. Teszkiewicz Novick. Distribuído bajo lice
 Hernan ATN | herni@cajadeideas.ar 
 """
 
-from .sobrecargar import *
+from sobrecargar import *
