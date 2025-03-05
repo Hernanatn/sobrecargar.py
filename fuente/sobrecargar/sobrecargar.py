@@ -21,7 +21,7 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro
 from types import MappingProxyType
-from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, _UnpackGenericAlias as _DesempacarAliasGenérico, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
+from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
 from collections.abc import Sequence as Sequencia, Mapping as Mapeo
 from collections import namedtuple as tuplanominada
 from functools import partial as parcial
@@ -37,6 +37,11 @@ if info_versión < (3, 9):
     raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
     
 class _SobrecargaDiferida(type):
+    """Metaclase que se encarga de inicilizar las sobrecargas de forma diferida, sól oexiste para manejar el caso de sobrecargas a métodos de clase/instancia.
+    Al decorar una función/método con @sobrecargar, en vez de crearse una instancia de `sobrecargar`, se crea una instancia de `sobrecargar_Diferida`, la cual 
+    se comporta *como si* fuera `sobrecargar` y retiene todo el estado necesario para construir la verdadera isntancia más adelante, recién la primera vez que 
+    se llama `()` la función o método sobrecargado se instacia propiamente.
+    """
     def __init__(clase, nombre, ancestros, diccionario):
         super().__init__(nombre,ancestros,diccionario)
 
@@ -243,10 +248,10 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
 
             esDistintoTipo : bool
             if paramEsVariable and paramEsContenedor and paramEsVarPos:
-                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _DesempacarAliasGenérico else tipoEsperado
+                tipoEsperado = tipoEsperado.__args__[0] if obtenerOrigen(type(tipoEsperado)) is Desempacar else tipoEsperado
                 esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
             elif paramEsVariable and paramEsContenedor and paramEsVarNom:
-                tipoEsperado = tipoEsperado.__args__[0] if type(tipoEsperado) == _DesempacarAliasGenérico else tipoEsperado
+                tipoEsperado = tipoEsperado.__args__[0] if obtenerOrigen(type(tipoEsperado)) is Desempacar else tipoEsperado
                 esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[1]) 
             elif paramEsUnion:
                 esDistintoTipo = not issubclass(tipoRecibido,obtenerArgumentos(tipoEsperado))
@@ -358,10 +363,18 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
                 })
             return mejorFuncion(*posicionales,**nominales)
         else:
-            raise TypeError(f"[ERROR] No existen sobrecargas de {función.__name__} para los parámetros provistos:\n {[type(posicional) for posicional in posicionales]} {[(k,type(nominal)) for k,nominal in nominales.items()]}\n Sobrecargas soportadas: {[dict(fir.parameters) for fir in self.sobrecargas.keys()]}")
+            raise TypeError(
+                f"[ERROR] No existen sobrecargas de {función.__name__} para los parámetros provistos:\n" 
+                f"  - Posicionales: {', '.join(p.__name__ for p in map(type, posicionales))}\n"
+                f"  - Nominales: {', '.join(f'{k}: {type(v).__name__}' for k, v in nominales.items())}\n\n"
+                f"Sobrecargas soportadas:\n"
+                +"\n".join(
+                    f"  - {', '.join(f'{v}' for v in dict(fir.parameters).values())}"
+                    for fir in self.sobrecargas.keys()
+                )
+            )
     
     def __get__(self, obj, tipoObj):
-        #
         class MetodoSobrecargado:
             __doc__ = self.__doc__
             __call__ = parcial(self.__call__, obj) if obj is not None else parcial(self.__call__, tipoObj)
@@ -437,8 +450,6 @@ overload = sobrecargar
 
 if __name__ == '__main__': 
     print(__doc__)    
-    import unittest
-    from typing import Unpack
 """
 Licencia MIT
 
