@@ -20,7 +20,7 @@ def funcion_libre(a: float, *args : *tuple[int]):
 
 @sobrecargar
 def funcion_libre(a: float, b: Union[float,int] ):
-    """Multiplica el flotante por el valor de una clave específica."""
+    """Multiplica el flotante por un entero u otro flotante."""
     return a * b
 
 # Clase con métodos decorados
@@ -34,6 +34,11 @@ class MiClase:
     def metodo(self, a: int, *args: *tuple[int]):
         """Multiplica el primer número por la suma de argumentos."""
         return a * sum(args)
+
+    @sobrecargar
+    def metodo(self, a: float, b: Union[float,int] ):
+        """Multiplica el flotante por un entero u otro flotante."""
+        return a * b
 
     @sobrecargar
     def metodo(self, a: str, b: str = "default"):
@@ -70,12 +75,39 @@ class PruebasSobrecargar(unittest.TestCase):
         self.assertEqual(instancia.metodo("Hola, "), "Hola, default")
         self.assertEqual(instancia.metodo("Hola, ", "Mundo"), "Hola, Mundo")
 
+        
+    def test_metodo_union(self):
+        instancia = MiClase()
+        self.assertEqual(instancia.metodo(1.5, 2),1.5*2)     
+
+
+    def test_cache_debug(self):
+
+        """Prueba errores en invocaciones no soportadas."""
+        @sobrecargar(cache=True, debug=True)
+        def funcion_cacheada_libre(a: float, *args : *tuple[int]):
+            """Multiplica el flotante por el valor de una clave específica."""
+            return a * sum(a for a in args)
+
+        @sobrecargar(cache=True, debug=True)
+        def funcion_cacheada_libre(a: float, b: Union[float,int] ):
+            """Multiplica el flotante por un entero u otro flotante."""
+            return a * b    
+
+        self.assertEqual(funcion_cacheada_libre(10.5,2),10.5*2)
+        self.assertEqual(funcion_cacheada_libre(11.5,2),11.5*2)
+        self.assertEqual(funcion_cacheada_libre(12.5,2),12.5*2)
+
     def test_errores(self):
         """Prueba errores en invocaciones no soportadas."""
         with self.assertRaises(TypeError):
-            funcion_libre(1, "cadena")
-        with self.assertRaises(TypeError):
-            MiClase().metodo(1.5, 2)
+            try:
+                funcion_libre(1, "cadena")
+            except TypeError as e:
+                print(e)
+                raise 
+
+    
 
 if __name__ == "__main__":
     unittest.main()
