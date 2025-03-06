@@ -139,10 +139,12 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         firma : Firma
         funcionSubyacente : Llamable
         firma, funcionSubyacente = _sobrecargar.__desenvolver(función)
+        firma, funcionSubyacente = _sobrecargar.__desenvolver(función)
 
         self.__debug(f"Sobrecarga registrada para: {self.__nombre}. Firma: {firma}")
         if type(self).__esMetodo(función):
             clase : type = type(self).__devolverClase(función)
+            self.__debug(f"{self.__nombre} es un método de {clase}.")
             self.__debug(f"{self.__nombre} es un método de {clase}.")
             for ancestro in clase.__mro__:
                 for base in ancestro.__bases__:
