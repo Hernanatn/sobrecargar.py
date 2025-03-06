@@ -19,7 +19,7 @@ __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
 
-from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro
+from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco
 from types import MappingProxyType
 from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
 from collections.abc import Sequence as Sequencia, Mapping as Mapeo
@@ -27,6 +27,7 @@ from collections import namedtuple as tuplanominada
 from functools import partial as parcial
 from sys import modules as módulos, version_info as info_versión
 from itertools import zip_longest as zipearmáslargo
+from os.path import abspath as rutaAbsoluta
 
 if info_versión < (3, 11):
     from typing_extensions import Self
@@ -47,7 +48,6 @@ class _SobrecargaDiferida(type):
 
         class _Diferida(object): 
             def __new__(cls, posicionales, nominales):
-                #print(clase,cls,posicionales,nominales)
                 objeto = clase.__new__(clase,*posicionales,*nominales)
                 if not hasattr(objeto, "_Diferida__parametros_iniciales") or getattr(objeto, "_Diferida__parametros_iniciales") is None:
                     objeto.__parametros_iniciales = []
@@ -84,7 +84,7 @@ class _SobrecargaDiferida(type):
 
 import __main__
 
-class sobrecargar(metaclass=_SobrecargaDiferida):
+class _sobrecargar(metaclass=_SobrecargaDiferida):
     """
     Clase que actúa como decorador de tipo-función, permitiendo definir múltiples
     versiones de una función o método con diferentes conjuntos de parámetros y tipos.
@@ -93,8 +93,8 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
 
     Atributos de Clase:
         _sobrecargadas (dict): Un diccionario que mantiene un registro de las instancias
-        de 'sobrecargar' creadas para cada función o método decorado. Las claves son los
-        nombres de las funciones o métodos, y los valores son las instancias de 'sobrecargar'.
+        de '_sobrecargar' creadas para cada función o método decorado. Las claves son los
+        nombres de las funciones o métodos, y los valores son las instancias de '_sobrecargar'.
 
     Atributos de Instancia:
         sobrecargas (dict): Un diccionario que almacena las sobrecargas definidas para
@@ -102,23 +102,26 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
         las firmas de las sobrecargas, y los valores son las funciones o métodos
         correspondientes.
     """
-    _sobrecargadas : dict[str, 'sobrecargar'] = {}
+    _sobrecargadas : dict[str, '_sobrecargar'] = {}
 
-    def __new__(cls, función : Llamable)-> 'sobrecargar':
+    def __new__(cls, función : Llamable, *posicionales,**nominales)-> '_sobrecargar':
         """
         Constructor. Se crea una única instancia por nombre de función.
         Args:
             función (Llamable): La función o método que se va a decorar.
         Returns:
-            sobrecargar: La instancia de la clase 'sobrecargar' asociada al nombre de la función provista.
+            _sobrecargar: La instancia de la clase '_sobrecargar' asociada al nombre de la función provista.
         """
 
         nombre : str = cls.__nombreCompleto(función)
         if nombre not in cls._sobrecargadas.keys(): 
-            cls._sobrecargadas[nombre] = super().__new__(sobrecargar) 
+            cls._sobrecargadas[nombre] = super().__new__(_sobrecargar)
+            cls._sobrecargadas[nombre].__nombre = función.__name__
+            cls._sobrecargadas[nombre].__nombre_completo = nombre
+
         return  cls._sobrecargadas[nombre]
 
-    def __init__(self,función : Llamable,*, cache : bool = False) -> None:
+    def __init__(self,función : Llamable,*, cache : bool = False, debug : bool = False) -> None:
         """
         Inicializador. Se encarga de inicializar el diccionario
         de sobrecargas (si no hay ya uno) y registrar en él la versión actual de la función o método decorado.
@@ -130,20 +133,23 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
         if not hasattr(self,'sobrecargas'):
             self.sobrecargas : dict[Firma, Llamable] = {}
 
-        self._cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], dict[str, type[Cualquiera]]], Llamable[..., Cualquiera]]] = {} if cache else None
+        self.__cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], tuple[tuple[str, type[Cualquiera]]]], Llamable[..., Cualquiera]]] = self.__cache if hasattr(self,"_sobrecargar__cache") and self.__cache is not None else {} if cache else None
+        self.__debug = self.__debug if hasattr(self,"_sobrecargar__debug") and self.__debug is not None else lambda msj: print(f"[DEBUG] {msj}") if debug else lambda msj: None
 
         firma : Firma
         funcionSubyacente : Llamable
-        firma, funcionSubyacente = sobrecargar.__desenvolver(función)
+        firma, funcionSubyacente = _sobrecargar.__desenvolver(función)
 
+        self.__debug(f"Sobrecarga registrada para: {self.__nombre}. Firma: {firma}")
         if type(self).__esMetodo(función):
             clase : type = type(self).__devolverClase(función)
+            self.__debug(f"{self.__nombre} es un método de {clase}.")
             for ancestro in clase.__mro__:
                 for base in ancestro.__bases__:
                     if base is object : break
                     nombreCompletoMetodo : str = f"{base.__module__}.{base.__name__}.{función.__name__}"
                     if nombreCompletoMetodo in type(self)._sobrecargadas.keys():
-                        sobrecargaBase : 'sobrecargar' = type(self)._sobrecargadas[nombreCompletoMetodo]
+                        sobrecargaBase : '_sobrecargar' = type(self)._sobrecargadas[nombreCompletoMetodo]
                         self.sobrecargas.update(sobrecargaBase.sobrecargas)
 
         self.sobrecargas[firma] = funcionSubyacente
@@ -171,13 +177,35 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
             proporcionados.
         """
 
-        if self._cache is not None:
+        if self.__cache is not None:
             parametros = (
-                tuple(type(p) for p in posicionales),
-                {n: type(v) for n, v in nominales.items()},
+                tuple(type(p) for p in posicionales), 
+                tuple((n, type(v)) for n, v in nominales.items()),
             )
-            if parametros in self._cache.keys():
-                return self._cache[parametros](*posicionales,**nominales)
+            if parametros in self.__cache.keys():
+                func = self.__cache.get(parametros)
+                self.__debug(
+                        f"Llamada en caché para {self.__nombre}"
+                        f"\n\tParámetros provistos:"
+                        f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{p}]" for p in posicionales)}"
+                        f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}  [{v}]' for k, v in nominales.items())}"
+                        f"\n\tFirma en caché: {obtenerfirma(func)}"
+                    )
+
+                return func(*posicionales,**nominales)
+            
+        
+        self.__debug(
+                f"Inicia selección de candidatos para {self.__nombre}"
+                f"\n\tParámetros provistos:"
+                f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{p}]" for p in posicionales)}"
+                f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__} [{v}]' for k, v in nominales.items())}"
+                f"\n\tSobrecargas soportadas:"
+                f"\n"+"\n".join(
+                    f"\t- {', '.join(f'{v}' for v in dict(fir.parameters).values())}"
+                    for fir in self.sobrecargas.keys()
+                )
+            )
 
         _C = TipoVariable("_C", bound=Sequencia)
         _T = TipoVariable("_T", bound=Cualquiera)
@@ -349,27 +377,33 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
             else:
                 continue
         if candidatos:
-            
             if len(candidatos)>1:
                 candidatos.sort(key= lambda c: c.puntaje, reverse=True)
+            self.__debug(f"Candidatos: \n\t- {"\n\t- ".join(' | '.join([str(i) for i in c if not callable(i)]) for c in candidatos)}")
             mejorFuncion = candidatos[0].objetoFuncion
-            if self._cache is not None:
+            if self.__cache is not None:
                 parametros = (
                     tuple(type(p) for p in posicionales),
-                    {n: type(v) for n, v in nominales.items()},
+                    tuple(tuple(n, type(v)) for n, v in nominales.items()),
                 )
-                self._cache.update({
+                self.__cache.update({
                     parametros : mejorFuncion
                 })
             return mejorFuncion(*posicionales,**nominales)
         else:
+            marco_llamada = marcoActual().f_back
+            info_llamada = obtenerInfoMarco(marco_llamada)
+            if "return self.__call__(*posicionales,**nominales)" in info_llamada.code_context and info_llamada.function == "__call__":
+                info_llamada = marco_llamada.f_back
             raise TypeError(
-                f"[ERROR] No existen sobrecargas de {función.__name__} para los parámetros provistos:\n" 
-                f"  - Posicionales: {', '.join(p.__name__ for p in map(type, posicionales))}\n"
-                f"  - Nominales: {', '.join(f'{k}: {type(v).__name__}' for k, v in nominales.items())}\n\n"
-                f"Sobrecargas soportadas:\n"
+                f"[ERROR] No se pudo llamar a {función.__name__} en {rutaAbsoluta(info_llamada.filename)}:{info_llamada.lineno} " 
+                f"\n\tParámetros provistos" 
+                f"\n\t- Posicionales: {', '.join(p.__name__ for p in map(type, posicionales))}"
+                f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}' for k, v in nominales.items())}"
+                f"\n"
+                f"\n\tSobrecargas soportadas:\n"
                 +"\n".join(
-                    f"  - {', '.join(f'{v}' for v in dict(fir.parameters).values())}"
+                    f"\t- {', '.join(f'{v}' for v in dict(fir.parameters).values())}"
                     for fir in self.sobrecargas.keys()
                 )
             )
@@ -418,7 +452,7 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
     @staticmethod
     def __tieneVariables(parametrosFuncion : MappingProxyType[str,Parámetro]) -> bool:
         for parametro in parametrosFuncion.values():
-            if sobrecargar.__tieneVarNom(parametrosFuncion) or sobrecargar.__tieneVarPos(parametrosFuncion): return True
+            if _sobrecargar.__tieneVarNom(parametrosFuncion) or _sobrecargar.__tieneVarPos(parametrosFuncion): return True
         return False
 
     @staticmethod
@@ -446,7 +480,23 @@ class sobrecargar(metaclass=_SobrecargaDiferida):
             if parametro.kind == Parámetro.KEYWORD_ONLY: return True
         return False
 
+
+def sobrecargar(*args, cache : bool = False, debug : bool = False):
+    if args and callable(args[0]):
+        return _sobrecargar(args[0],cache=cache,debug=debug)
+    def decorador(f):
+        if debug:
+            info_llamada = obtenerInfoMarco( marcoActual().f_back)
+            print(
+                f"[DEBUG] Sobrecarga de función."
+                f"\n\t{f.__name__} en {rutaAbsoluta(info_llamada.filename)}:{info_llamada.lineno}"
+                f"\n\t- {cache = }"
+                f"\n\t- {debug = }"
+            )
+        return _sobrecargar(f,cache=cache,debug=debug)
+    return decorador
 overload = sobrecargar
+
 
 if __name__ == '__main__': 
     print(__doc__)    
