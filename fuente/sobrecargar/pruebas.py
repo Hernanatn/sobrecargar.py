@@ -24,7 +24,6 @@ def funcion_libre(a: float, b: Union[float,int] ):
     return a * b
 
 # Clase con métodos decorados
-class MiClase:...
 class MiClase:
     @sobrecargar
     def metodo(self, a: int, b: int):
