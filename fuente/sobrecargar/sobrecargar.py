@@ -189,7 +189,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
                 self.__debug(
                         f"Llamada en caché para {self.__nombre}"
                         f"\n\tParámetros provistos:"
-                        f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{p}]" for p in posicionales)}"
+                        f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{repr(p)}]" for p in posicionales)}"
                         f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}  [{v}]' for k, v in nominales.items())}"
                         f"\n\tFirma en caché: {obtenerfirma(func)}"
                     )
@@ -200,7 +200,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         self.__debug(
                 f"Inicia selección de candidatos para {self.__nombre}"
                 f"\n\tParámetros provistos:"
-                f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{p}]" for p in posicionales)}"
+                f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{repr(p)}]" for p in posicionales)}"
                 f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__} [{v}]' for k, v in nominales.items())}"
                 f"\n\tSobrecargas soportadas:"
                 f"\n"+"\n".join(
