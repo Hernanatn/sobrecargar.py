@@ -3,7 +3,7 @@
 # Sobrecargar
 
 [![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
-[![Versión: 3.1.01](https://img.shields.io/badge/version-v3.1.1-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
+[![Versión: 3.1.1](https://img.shields.io/badge/version-v3.1.1-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
 [![Verisón de Python: 3.12](https://img.shields.io/badge/Python-3.12-blue?logo=python)](https://www.python.org/downloads/release/python-3120/)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-lightgrey.svg)](LICENSE)
 
@@ -105,9 +105,15 @@ El decorador puede seguir utilizandose sin necesidad de prover ningún parámetr
 
 ```
 
-
 ---
 
+## [Documentación](/docs)
 **Nota**: Esta documentación es un resumen de alto nivel. Para obtener más detalles sobre la implementación y el uso avanzado, se recomienda consultar el código fuente, la documentación provista y realizar pruebas adicionales.
 
-## [Documentación](/docs)
+## Extensión para VSCode/Codium:
+
+### Instalación:
+1. Descargar el [paquete vsix de la extensión](./lsp/vscode/sobrecargar-vscode/sobrecargar-vscode-0.1.3.vsix);    
+2. Ir a Extensiones (`Ctrl` + `Shift` + `X`) de VSCode/Codium;  
+3. En Vistas y Más Acciones (`...`) seleccionar `Instalar desde VSIX`
+4. En la paleta de comandos (`Ctrl` + `Shift` + `P`) seleccionar `Extensions: Refresh`

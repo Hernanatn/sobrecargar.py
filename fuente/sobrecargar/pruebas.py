@@ -14,8 +14,14 @@ def funcion_libre(a: str, *args: int):
     return a + str(sum(args))
 
 @sobrecargar
+def funcion_libre\
+    (a: str, *args: int, **kwargs : Unpack[str,int]):
+    """Concatena un string con la suma de argumentos y con una repeticion de las llaves por los valores de los nominales."""
+    return a + str(sum(args)) + "".join(k*v for k,v in kwargs.items())
+
+@sobrecargar
 def funcion_libre(a: float, *args : *tuple[int]):
-    """Multiplica el flotante por el valor de una clave específica."""
+    """Multiplica el flotante por la suma de los argumentos"""
     return a * sum(a for a in args)
 
 @sobrecargar
@@ -24,6 +30,44 @@ def funcion_libre(a: float, b: Union[float,int] ):
     return a * b
 
 # Clase con métodos decorados
+class OtraClase:
+
+    @sobrecargar
+    def metodo(self, a: int, b: int, c: str):
+        """Resta dos enteros. Imprime una str"""
+        print(c)
+        return a - b
+
+    @sobrecargar
+    def metodo(self, a: int, b: int):
+        """Resta dos enteros."""
+        print(c)
+        return a - b
+
+    @sobrecargar
+    def metodo(self, a: int, b: tuple = (
+        "juan",
+        {
+            "pedro" : {
+                "lucas" : [
+                    2,
+                    3,
+                    (
+                        1,
+                        2,
+                        [
+                            5,
+                            6,
+                            7
+                        ]
+                    )
+                ]
+            },
+        }
+    )) -> bool:
+        """Firma medio loca de prueba con defaults formateados falopa para cehquear el addon de vscode."""
+        return False
+    
 class MiClase:
     @sobrecargar
     def metodo(self, a: int, b: int):
@@ -78,8 +122,8 @@ class PruebasSobrecargar(unittest.TestCase):
         
     def test_metodo_union(self):
         instancia = MiClase()
-        self.assertEqual(instancia.metodo(1.5, 2),1.5*2)     
 
+        self.assertEqual(instancia.metodo(1.5, 2),1.5*2)     
 
     def test_cache_debug(self):
 
@@ -123,6 +167,5 @@ class PruebasSobrecargar(unittest.TestCase):
                 raise 
 
     
-
 if __name__ == "__main__":
     unittest.main()

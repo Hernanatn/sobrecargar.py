@@ -1,0 +1,101 @@
+{
+  "name": "sobrecargar-vscode",
+  "displayName": "Sobrecargar",
+  "description": "Soporte en VSCode/VSCodium para sobrecargar.py",
+  "keywords": ["Python", "Overload", "Sobrecargar", "Intellisense"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hernanatn/sobrecargar.py"
+  },
+  "bugs": {
+    "url": "https://github.com/hernanatn/sobrecargar.py/issues"
+  },
+  "version": "0.1.4",
+  "publisher": "hernanatn",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "icon":"logo.webp",
+  "categories": [
+    "Programming Languages",
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:python"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "sobrecargar.refreshOverloads",
+        "title": "Sobrecargar: Refrescar sobrecargas"
+      },
+      {
+        "command": "sobrecargar.showOverloads",
+        "title": "Sobrecargar: Mostrar todas las sobrecargas"
+      },
+      {
+        "command": "sobrecargar.nextSignature",
+        "title": "Sobrecargar: Siguiente sobrecarga"
+      },
+      {
+        "command": "sobrecargar.previousSignature",
+        "title": "Sobrecargar: Sobrecarga anterior"
+      },
+      {
+        "command": "sobrecargar.cycleSignatures",
+        "title": "Sobrecargar: Alternar sobrecargas"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "editor.action.nextSignature",
+        "key": "alt+right",
+        "when": "signatureHelpVisible"
+      },
+      {
+        "command": "editor.action.prevSignature",
+        "key": "alt+left",
+        "when": "signatureHelpVisible"
+      },
+      {
+        "command": "sobrecargar.cycleSignatures",
+        "key": "alt+space",
+        "when": "signatureHelpVisible"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "sobrecargar.refreshOverloads",
+          "when": "editorLangId == python"
+        },
+        {
+          "command": "sobrecargar.showOverloads",
+          "when": "editorLangId == python"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "lint": "eslint src --ext ts",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/glob": "^7.1.3",
+    "@types/mocha": "^8.2.2",
+    "@types/node": "14.x",
+    "@types/vscode": "^1.60.0",
+    "@typescript-eslint/eslint-plugin": "^4.26.0",
+    "@typescript-eslint/parser": "^4.26.0",
+    "eslint": "^7.27.0",
+    "glob": "^7.1.7",
+    "mocha": "^11.1.0",
+    "typescript": "^4.3.2",
+    "vscode-test": "^1.5.2"
+  }
+}
