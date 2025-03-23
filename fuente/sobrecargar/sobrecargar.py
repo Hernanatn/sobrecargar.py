@@ -14,7 +14,7 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "1.0"
+__version__ = "3.1.2"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
@@ -86,10 +86,9 @@ import __main__
 
 class _sobrecargar(metaclass=_SobrecargaDiferida):
     """
-    Clase que actúa como decorador de tipo-función, permitiendo definir múltiples
+    Clase que actúa como decorador de funciones, permitiendo definir múltiples
     versiones de una función o método con diferentes conjuntos de parámetros y tipos.
-    Esto permite crear una sobrecarga de funciones similar a la que se encuentra en
-    lenguajes de programación estáticamente tipados, como C++.
+    Esto permite crear una sobrecarga de funciones (i.e., despachado dinámico según los argumentos provistos).
 
     Atributos de Clase:
         _sobrecargadas (dict): Un diccionario que mantiene un registro de las instancias
@@ -101,6 +100,13 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         la función o método decorado. Las claves son objetos Firma que representan
         las firmas de las sobrecargas, y los valores son las funciones o métodos
         correspondientes.
+
+        __cache (dict): diccionario que asocia tipos de parametros en la llamada con el 
+        objeto subyacente de la función a llamar. optimización inocente que reduce el
+        costo asociado con llamadas subsiguientes. Muy útil para bucles.  
+
+        __debug (Llamable): lambda que imprime información de diagnóstico si la sobrecarga
+        se inicializó en modo debug, de lo contrario no hace nada. 
     """
     _sobrecargadas : dict[str, '_sobrecargar'] = {}
 
@@ -128,6 +134,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
 
         Args:
             función (Llamable): La función o método decorado.
+            cache (bool): Opción que indica si la sobrecarga debe almacenar un caché.
+            debug (bool): Opción que indica si la sobrecarga debe inicializarse en modo debug.
         """
 
         if not hasattr(self,'sobrecargas'):
@@ -166,6 +174,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         que se adecúan a los parámetros propocionados. Prioriza la sobrecarga
         que mejor se ajusta a los tipos y cantidad de argumentos. Si varios
         candidatos coinciden, propaga el resultado del más específico. 
+
+        Si la sobrecarga se inicializó con la opción `cache`, 
 
         Args:
             *posicionales: Argumentos posicionales pasados a la función o método.
@@ -275,7 +285,10 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             paramEsVariable   : bool = paramEsVarPos or paramEsVarNom
             paramEsUnion : bool = hasattr(tipoEsperado,"__origin__") and obtenerOrigen(tipoEsperado) is Union
             paramEsContenedor : bool = (hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo)) and not paramEsUnion
-
+            
+            numericoCompatible : bool = (issubclass(tipoEsperado, complex) and issubclass(tipoRecibido, (float,int))        #* Chequeamos el caso especial en el que Python tipado diverge de Python no tipado.
+                                                    or issubclass(tipoEsperado, float) and issubclass(tipoRecibido, int))   #* Ver: https://typing.python.org/en/latest/spec/special-types.html#special-cases-for-float-and-complex
+            
             esDistintoTipo : bool
             if paramEsVariable and paramEsContenedor and paramEsVarPos:
                 tipoEsperado = tipoEsperado.__args__[0] if obtenerOrigen(type(tipoEsperado)) is Desempacar else tipoEsperado
@@ -288,8 +301,10 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             elif paramEsContenedor:
                 esDistintoTipo = not validarContenedor(valor,parametroFuncion)
             else:
-                esDistintoTipo = not issubclass(tipoRecibido, tipoEsperado) 
-            
+                esDistintoTipo = not (
+                                    issubclass(tipoRecibido, tipoEsperado)
+                                    or numericoCompatible
+                                )
             
             if not esNoTipado and not esNulo and not paramEsSelf and not esPorDefecto and esDistintoTipo:
                 return False
@@ -298,19 +313,21 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             else:
                 if paramEsVariable and paramEsContenedor and paramEsVarPos:
                     if tipoRecibido == tipoEsperado.__args__[0]:
-                        puntajeTipo +=2
+                        puntajeTipo +=3
                     elif issubclass(tipoRecibido,tipoEsperado.__args__[0]):
                         puntajeTipo +=1  
                 elif paramEsVariable and paramEsContenedor and paramEsVarNom:
                     if tipoRecibido == tipoEsperado.__args__[1]:
-                        puntajeTipo +=2
+                        puntajeTipo +=3
                     elif issubclass(tipoRecibido,tipoEsperado.__args__[1]):
                         puntajeTipo +=1  
                 elif paramEsContenedor:
                     puntajeTipo += validarContenedor(valor,parametroFuncion)
                 elif tipoRecibido == tipoEsperado:
-                    puntajeTipo += 4
+                    puntajeTipo += 5
                 elif issubclass(tipoRecibido,tipoEsperado):
+                    puntajeTipo += 4
+                elif numericoCompatible:
                     puntajeTipo += 3
                 elif esPorDefecto:  
                     puntajeTipo += 2
@@ -483,7 +500,18 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         return False
 
 
-def sobrecargar(*args, cache : bool = False, debug : bool = False):
+def sobrecargar(*args, cache : bool = False, debug : bool = False) ->Llamable:
+    """Decorador de funciones que las transforma en sobrecargas.  
+    **Parametros:** 
+        :param typing.Callable f: la función que se desea sobrecargar.
+        :param bool cache: indica si se debe almacenar un caché del despacho, pequeña optimización. Por defecto: True.  
+        :param bool debug: indica si se debe imprimir información de diagnóstico. Por defecto: False.  
+    
+    **Retorna:**  
+        :param typing.Callable: el decorador.
+    ---  
+    """
+
     if args and callable(args[0]):
         return _sobrecargar(args[0],cache=cache,debug=debug)
     def decorador(f):
