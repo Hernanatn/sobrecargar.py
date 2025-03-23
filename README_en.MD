@@ -9,7 +9,7 @@
 | Language  | Docs   | 
 | :---- | ----: |
 | :argentina: :es: | [/REAMDE.MD](/README.MD)   |
-| :en: | [/REAMDE_en.MD](/README.MD)   |
+| :us: | [/REAMDE_en.MD](/README.MD)   |
 
 
 ## Description
