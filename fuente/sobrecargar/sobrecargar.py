@@ -127,7 +127,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
 
         return  cls._sobrecargadas[nombre]
 
-    def __init__(self,función : Llamable,*, cache : bool = False, debug : bool = False) -> None:
+    def __init__(self,función : Llamable,*, cache : bool = True, debug : bool = False) -> None:
         """
         Inicializador. Se encarga de inicializar el diccionario
         de sobrecargas (si no hay ya uno) y registrar en él la versión actual de la función o método decorado.
@@ -500,7 +500,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         return False
 
 
-def sobrecargar(*args, cache : bool = False, debug : bool = False) ->Llamable:
+def sobrecargar(*args, cache : bool = True, debug : bool = False) ->Llamable:
     """Decorador de funciones que las transforma en sobrecargas.  
     **Parametros:** 
         :param typing.Callable f: la función que se desea sobrecargar.
