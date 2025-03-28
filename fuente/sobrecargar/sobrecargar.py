@@ -14,7 +14,7 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "3.1.2"
+__version__ = "3.1.3"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
@@ -110,6 +110,15 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
     """
     _sobrecargadas : dict[str, '_sobrecargar'] = {}
 
+    __slots__ = (
+        'sobrecargas'
+        , "__nombre"
+        , "__nombre_completo"
+        , "__cache"
+        , "__debug"
+        , "__doc__"
+    )
+
     def __new__(cls, función : Llamable, *posicionales,**nominales)-> '_sobrecargar':
         """
         Constructor. Se crea una única instancia por nombre de función.
@@ -140,9 +149,12 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
 
         if not hasattr(self,'sobrecargas'):
             self.sobrecargas : dict[Firma, Llamable] = {}
+        if not hasattr(self,'_sobrecargar__nombre') or not hasattr(self,'_sobrecargar__nombre_completo'):
+            self.__nombre_completo = self.__nombreCompleto(función)
+            self.__nombre = función.__name__
 
-        self.__cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], tuple[tuple[str, type[Cualquiera]]]], Llamable[..., Cualquiera]]] = self.__cache if hasattr(self,"_sobrecargar__cache") and self.__cache is not None else {} if cache else None
-        self.__debug = self.__debug if hasattr(self,"_sobrecargar__debug") and self.__debug is not None else lambda msj: print(f"[DEBUG] {msj}") if debug else lambda msj: None
+        self.__cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], tuple[tuple[str, type[Cualquiera]], ...]], Llamable[..., Cualquiera]]] = self.__cache if hasattr(self,"_sobrecargar__cache") and self.__cache is not None else {} if cache else None
+        self.__debug : Llamable[[str], None] | Llamable[[str], Llamable[[Cualquiera], None] | None] = self.__debug if hasattr(self,"_sobrecargar__debug") and self.__debug is not None else lambda msj: print(f"[DEBUG] {msj}") if debug else lambda msj: None
 
         firma : Firma
         funcionSubyacente : Llamable
@@ -195,7 +207,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
                 tuple((n, type(v)) for n, v in nominales.items()),
             )
             if parametros in self.__cache.keys():
-                func = self.__cache.get(parametros)
+                func = self.__cache[parametros]
                 self.__debug(
                         f"Llamada en caché para {self.__nombre}"
                         f"\n\tParámetros provistos:"
@@ -402,20 +414,28 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             mejorFuncion = candidatos[0].objetoFuncion
             if self.__cache is not None:
                 parametros = (
-                    tuple(type(p) for p in posicionales),
-                    tuple(tuple(n, type(v)) for n, v in nominales.items()),
+                    tuple(type(p) for p in posicionales), 
+                    tuple((n, type(v)) for n, v in nominales.items()),
                 )
                 self.__cache.update({
                     parametros : mejorFuncion
                 })
             return mejorFuncion(*posicionales,**nominales)
         else:
-            marco_llamada = marcoActual().f_back
-            info_llamada = obtenerInfoMarco(marco_llamada)
-            if "return self.__call__(*posicionales,**nominales)" in info_llamada.code_context and info_llamada.function == "__call__":
-                info_llamada = marco_llamada.f_back
+            marco_actual = marcoActual()
+            archivo = __file__
+            linea = 425
+            if marco_actual:
+                marco_llamada = marco_actual.f_back if marco_actual.f_back else marco_actual
+                info_llamada = obtenerInfoMarco(marco_llamada)
+                if info_llamada.code_context and "return self.__call__(*posicionales,**nominales)" in info_llamada.code_context and info_llamada.function == "__call__":
+                    marco_llamada = marco_llamada.f_back if marco_llamada.f_back else marco_llamada
+                    info_llamada = obtenerInfoMarco(marco_llamada) 
+                
+                archivo = info_llamada.filename
+                linea = info_llamada.lineno
             raise TypeError(
-                f"[ERROR] No se pudo llamar a {función.__name__} en {rutaAbsoluta(info_llamada.filename)}:{info_llamada.lineno} " 
+                f"[ERROR] No se pudo llamar a {función.__name__} en {rutaAbsoluta(archivo)}:{linea} " 
                 f"\n\tParámetros provistos" 
                 f"\n\t- Posicionales: {', '.join(p.__name__ for p in map(type, posicionales))}"
                 f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}' for k, v in nominales.items())}"
