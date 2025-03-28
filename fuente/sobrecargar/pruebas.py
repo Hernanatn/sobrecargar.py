@@ -15,7 +15,7 @@ def funcion_libre(a: str, *args: int):
 
 @sobrecargar
 def funcion_libre\
-    (a: str, *args: int, **kwargs : Unpack[str,int]):
+    (a: str, *args: int, **kwargs : Unpack[dict[str,int]]):
     """Concatena un string con la suma de argumentos y con una repeticion de las llaves por los valores de los nominales."""
     return a + str(sum(args)) + "".join(k*v for k,v in kwargs.items())
 
@@ -41,7 +41,6 @@ class OtraClase:
     @sobrecargar
     def metodo(self, a: int, b: int):
         """Resta dos enteros."""
-        print(c)
         return a - b
 
     @sobrecargar

@@ -1,5 +1,5 @@
 from sobrecargar import sobrecargar
-from typing import Unpack
+from typing import Unpack, Union
 from fractions import Fraction
 from inspect import signature
 
@@ -29,7 +29,7 @@ class Radianes(Angulo):
 class Calculadora:...
 
 class Calculadora():
-    def __init__(self, modoAngulo: ['Grados','Radianes'] = 'Grados'):
+    def __init__(self, modoAngulo: Union['Grados','Radianes'] = 'Grados'):
         self.modo = modoAngulo
 
  
