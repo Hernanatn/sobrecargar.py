@@ -110,14 +110,6 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
     """
     _sobrecargadas : dict[str, '_sobrecargar'] = {}
 
-    __slots__ = (
-        'sobrecargas'
-        , "__nombre"
-        , "__nombre_completo"
-        , "__cache"
-        , "__debug"
-        , "__doc__"
-    )
 
     def __new__(cls, función : Llamable, *posicionales,**nominales)-> '_sobrecargar':
         """
