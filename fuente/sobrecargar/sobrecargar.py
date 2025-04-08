@@ -14,12 +14,12 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "3.1.4"
+__version__ = "3.1.5"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
 
-from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco
+from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco, isclass as esClase
 from types import MappingProxyType
 from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
 from collections.abc import Sequence as Sequencia, Mapping as Mapeo
@@ -290,8 +290,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             paramEsUnion : bool = hasattr(tipoEsperado,"__origin__") and obtenerOrigen(tipoEsperado) is Union
             paramEsContenedor : bool = (hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo)) and not paramEsUnion
             
-            numericoCompatible : bool = (issubclass(tipoEsperado, complex) and issubclass(tipoRecibido, (float,int))        #* Chequeamos el caso especial en el que Python tipado diverge de Python no tipado.
-                                                    or issubclass(tipoEsperado, float) and issubclass(tipoRecibido, int))   #* Ver: https://typing.python.org/en/latest/spec/special-types.html#special-cases-for-float-and-complex
+            numericoCompatible : bool = esClase(tipoEsperado) and (issubclass(tipoEsperado, complex) and issubclass(tipoRecibido, (float,int))  #* Chequeamos el caso especial en el que Python tipado diverge de Python no tipado.
+                                                    or issubclass(tipoEsperado, float) and issubclass(tipoRecibido, int))                       #* Ver: https://typing.python.org/en/latest/spec/special-types.html#special-cases-for-float-and-complex
             
             esDistintoTipo : bool
             if paramEsVariable and paramEsContenedor and paramEsVarPos:
