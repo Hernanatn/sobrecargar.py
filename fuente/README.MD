@@ -1,7 +1,7 @@
 # Sobrecargar
 
 [![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
-[![Versión: 3.1.5](https://img.shields.io/badge/version-v3.1.5-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
+[![Versión: 4.0.0](https://img.shields.io/badge/version-v4.0.0-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
 [![Versión de Python: 3.9+](https://img.shields.io/badge/Python-3.9_%7C_3.10_%7C_3.11_%7C_3.12_%7C_3.13_%7C_3.14-blue?logo=python)](https://www.python.org/downloads/release/python-3120/)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-lightgrey.svg)](LICENSE)
 

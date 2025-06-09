@@ -1,0 +1,8 @@
+[run]
+data_file = sobrecargar/pruebas/reportes/.coverage
+
+[html]
+directory = sobrecargar/pruebas/reportes/htmlcov
+
+[xml]
+output = sobrecargar/pruebas/reportes/coverage.xml
