@@ -21,7 +21,7 @@ __all__ = ['sobrecargar', 'overload']
 
 from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco, isclass as esClase
 from types import MappingProxyType
-from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos
+from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos, Literal
 from collections.abc import Sequence as Sequencia, Mapping as Mapeo
 from collections import namedtuple as tuplanominada
 from functools import partial as parcial
@@ -157,13 +157,13 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         if type(self).__esMetodo(función):
             clase : type = type(self).__devolverClase(función)
             self.__debug(f"{self.__nombre} es un método de {clase}.")
-            self.__debug(f"{self.__nombre} es un método de {clase}.")
             for ancestro in clase.__mro__:
                 for base in ancestro.__bases__:
                     if base is object : break
                     nombreCompletoMetodo : str = f"{base.__module__}.{base.__name__}.{función.__name__}"
                     if nombreCompletoMetodo in type(self)._sobrecargadas.keys():
                         sobrecargaBase : '_sobrecargar' = type(self)._sobrecargadas[nombreCompletoMetodo]
+                        if hasattr(sobrecargaBase,'__inicializar__'): getattr(sobrecargaBase,'__inicializar__')()
                         self.sobrecargas.update(sobrecargaBase.sobrecargas)
 
         self.sobrecargas[firma] = funcionSubyacente
@@ -228,115 +228,127 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         Candidato : Tupla = tuplanominada('Candidato',['puntaje','objetoFuncion',"firmaFuncion"])
         candidatos : Lista[Candidato] = []
 
-        def validarContenedor(valor : _C, parametroContenedor : Parámetro) -> int | bool:
-            puntajeTipo : int = 0
+        def validarContenedor(valor: _C, parametroContenedor: Parámetro) -> int | bool:
+            tipoEsperado = parametroContenedor.annotation
 
-            anotacionContenedor = parametroContenedor.annotation
-
-            if not hasattr(anotacionContenedor,"__origin__") or not hasattr(anotacionContenedor,"__args__") :
-                puntajeTipo += 1
-                return puntajeTipo
-
-            if obtenerOrigen(anotacionContenedor) is Union :
-                if not issubclass(type(valor),obtenerArgumentos(anotacionContenedor)):
-                    return False
-            elif not issubclass(type(valor),anotacionContenedor.__origin__): 
-                return False
-            argumentosContenedor : Tupla[type[_C]] = anotacionContenedor.__args__
-            tieneElipsis : bool = Ellipsis in argumentosContenedor
-            tieneUnicoTipo : bool = len(argumentosContenedor) == 1 or tieneElipsis
-
-            if tieneElipsis:
-                listaAuxiliarContenedor : list = list(argumentosContenedor)
-                listaAuxiliarContenedor[1] = listaAuxiliarContenedor[0]
-                argumentosContenedor = tuple(listaAuxiliarContenedor)
-
-            iteradorTipos : Iterador
-            if tieneUnicoTipo:
-                iteradorTipos = zipearmáslargo((type(t) for t in valor),argumentosContenedor,fillvalue=argumentosContenedor[0])
-            else:
-                iteradorTipos = zipearmáslargo((type(t) for t in valor),argumentosContenedor)
-
-            if not issubclass(type(valor[0]), argumentosContenedor[0]):
+            if not _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado):
                 return False
 
-            for tipoRecibido, tipoEsperado in iteradorTipos:
-                if tipoEsperado == None : 
-                    return False
-                if tipoRecibido == tipoEsperado:
-                    puntajeTipo += 2               
-                elif issubclass(tipoRecibido,tipoEsperado):
-                    puntajeTipo += 1
+            # Si pasó la validación, podemos puntuar según la precisión
+            tipo_base, tipo_param = _sobrecargar.__desenvolverTipoCompuesto(tipoEsperado)
+            
+            if tipo_param is None:
+                return 2  # solo se validó el contenedor, sin tipo interno
+
+            elementos = list(valor) if isinstance(valor, Iterable) else []
+            if not elementos:
+                return 2  # sin elementos, no se puede evaluar más
+
+            if isinstance(valor, dict):
+                claves = list(valor.keys())
+                valores = list(valor.values())
+                tipo_clave, tipo_valor = tipo_param
+                puntaje = sum(2 if type(k) == tipo_clave else 1 for k in claves if isinstance(k, tipo_clave)) + \
+                        sum(2 if type(v) == tipo_valor else 1 for v in valores if isinstance(v, tipo_valor))
+                return puntaje if puntaje > 0 else False
+
+            tipos_esperados = tipo_param if isinstance(tipo_param, tuple) else (tipo_param,)
+            if isinstance(valor, tuple) and len(tipos_esperados) == len(valor):
+                puntaje = 0
+                for val, tipo_esp in zip(valor, tipos_esperados):
+                    if type(val) == tipo_esp:
+                        puntaje += 2
+                    elif isinstance(val, tipo_esp):
+                        puntaje += 1
+                    else:
+                        return False
+                return puntaje
+
+            # Para listas, sets, etc.
+            tipo_dominante = tipos_esperados[0]
+            puntaje = 0
+            for val in elementos:
+                if type(val) == tipo_dominante:
+                    puntaje += 2
+                elif isinstance(val, tipo_dominante):
+                    puntaje += 1
                 else:
                     return False
-            return puntajeTipo
 
-        def validarTipoParametro(valor : _T, parametroFuncion : Parámetro) -> int | bool:
-            puntajeTipo : int = 0
+            return puntaje if puntaje > 0 else False
 
-            tipoEsperado = parametroFuncion.annotation 
-            tipoRecibido : type[_T] = type(valor)
+        def validarTipoParametro(valor: _T, parametroFuncion: Parámetro) -> int | bool:
+            puntajeTipo: int = 0
 
-            esNoTipado : bool = (tipoEsperado == Cualquiera)
-            porDefecto : _T = parametroFuncion.default
-            esNulo : bool = valor is None and porDefecto is None
+            tipoEsperado = parametroFuncion.annotation
+            tipoRecibido = type(valor)
 
-            esPorDefecto : bool = valor is None and porDefecto is not parametroFuncion.empty
-            paramEsSelf : bool =  parametroFuncion.name=='self' or parametroFuncion.name=='cls'
-            
-            paramEsVarPos   : bool = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL 
-            paramEsVarNom   : bool = parametroFuncion.kind == parametroFuncion.VAR_KEYWORD  
-            paramEsVariable   : bool = paramEsVarPos or paramEsVarNom
-            paramEsUnion : bool = hasattr(tipoEsperado,"__origin__") and obtenerOrigen(tipoEsperado) is Union
-            paramEsContenedor : bool = (hasattr(tipoEsperado,"__origin__") or (issubclass(tipoEsperado, Sequencia) and not issubclass(tipoEsperado,str)) or issubclass(tipoEsperado, Mapeo)) and not paramEsUnion
-            
-            numericoCompatible : bool = esClase(tipoEsperado) and (issubclass(tipoEsperado, complex) and issubclass(tipoRecibido, (float,int))  #* Chequeamos el caso especial en el que Python tipado diverge de Python no tipado.
-                                                    or issubclass(tipoEsperado, float) and issubclass(tipoRecibido, int))                       #* Ver: https://typing.python.org/en/latest/spec/special-types.html#special-cases-for-float-and-complex
-            
-            esDistintoTipo : bool
-            if paramEsVariable and paramEsContenedor and paramEsVarPos:
-                tipoEsperado = tipoEsperado.__args__[0] if obtenerOrigen(type(tipoEsperado)) is Desempacar else tipoEsperado
-                esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[0]) 
-            elif paramEsVariable and paramEsContenedor and paramEsVarNom:
-                tipoEsperado = tipoEsperado.__args__[0] if obtenerOrigen(type(tipoEsperado)) is Desempacar else tipoEsperado
-                esDistintoTipo = not issubclass(tipoRecibido,tipoEsperado.__args__[1]) 
-            elif paramEsUnion:
-                esDistintoTipo = not issubclass(tipoRecibido,obtenerArgumentos(tipoEsperado))
-            elif paramEsContenedor:
-                esDistintoTipo = not validarContenedor(valor,parametroFuncion)
-            else:
-                esDistintoTipo = not (
-                                    issubclass(tipoRecibido, tipoEsperado)
-                                    or numericoCompatible
-                                )
-            
+            esNoTipado = (tipoEsperado == Cualquiera) or tipoEsperado == parametroFuncion.empty
+            porDefecto = parametroFuncion.default
+            esNulo = valor is None and porDefecto is None
+            esPorDefecto = valor is None and porDefecto is not parametroFuncion.empty
+            paramEsSelf = parametroFuncion.name in {"self", "cls"}
+            paramEsVarPos = parametroFuncion.kind == parametroFuncion.VAR_POSITIONAL
+            paramEsVarNom = parametroFuncion.kind == parametroFuncion.VAR_KEYWORD
+
+            numericoCompatible = (
+                esClase(tipoEsperado)
+                and (
+                    issubclass(tipoEsperado, complex) and issubclass(tipoRecibido, (float, int))
+                    or issubclass(tipoEsperado, float) and issubclass(tipoRecibido, int)
+                )
+            )
+
+            if paramEsVarPos and obtenerOrigen(tipoEsperado) is Desempacar:
+                tipoEsperadoInterno = obtenerArgumentos(tipoEsperado)[0]
+                if not all(_sobrecargar.__verificarTipoCompuesto(arg, tipoEsperadoInterno) for arg in valor):
+                    return False
+                puntajeTipo += 4
+                return puntajeTipo + len(valor)  # más largo, más específico
+            elif paramEsVarPos and obtenerOrigen(tipoEsperado) in (Tupla,tuple) :
+                tipoEsperado = tipoEsperado
+                if _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado):
+                    puntajeTipo+=1
+            elif paramEsVarPos:
+                
+                tipoEsperado = Tupla[tipoEsperado]
+                if _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado):
+                    puntajeTipo+=1
+
+            if paramEsVarNom and obtenerOrigen(tipoEsperado) is Desempacar:
+
+                tipoEsperadoDict = obtenerArgumentos(tipoEsperado)[0]
+                if not isinstance(valor, dict):
+                    return False
+
+                for k, v in valor.items():
+                    if not _sobrecargar.__verificarTipoCompuesto(k, str) or \
+                    not _sobrecargar.__verificarTipoCompuesto(v, tipoEsperadoDict[str]):
+                        return False
+                puntajeTipo += 4
+                return puntajeTipo + len(valor)
+            elif paramEsVarNom and parametroFuncion.annotation is parametroFuncion.empty:
+                puntajeTipo+=1
+                
+            esDistintoTipo = not (
+                _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado)
+                or numericoCompatible
+            )
             if not esNoTipado and not esNulo and not paramEsSelf and not esPorDefecto and esDistintoTipo:
                 return False
-            elif paramEsVariable and not paramEsContenedor: 
+
+            if _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado):
+                puntajeTipo += 10
+                if type(valor) == tipoEsperado:
+                    puntajeTipo += 5
+            elif numericoCompatible:
+                puntajeTipo += 3
+            elif esPorDefecto:
+                puntajeTipo += 2
+            elif esNulo or paramEsSelf or esNoTipado:
                 puntajeTipo += 1
             else:
-                if paramEsVariable and paramEsContenedor and paramEsVarPos:
-                    if tipoRecibido == tipoEsperado.__args__[0]:
-                        puntajeTipo +=3
-                    elif issubclass(tipoRecibido,tipoEsperado.__args__[0]):
-                        puntajeTipo +=1  
-                elif paramEsVariable and paramEsContenedor and paramEsVarNom:
-                    if tipoRecibido == tipoEsperado.__args__[1]:
-                        puntajeTipo +=3
-                    elif issubclass(tipoRecibido,tipoEsperado.__args__[1]):
-                        puntajeTipo +=1  
-                elif paramEsContenedor:
-                    puntajeTipo += validarContenedor(valor,parametroFuncion)
-                elif tipoRecibido == tipoEsperado:
-                    puntajeTipo += 5
-                elif issubclass(tipoRecibido,tipoEsperado):
-                    puntajeTipo += 4
-                elif numericoCompatible:
-                    puntajeTipo += 3
-                elif esPorDefecto:  
-                    puntajeTipo += 2
-                elif esNulo or paramEsSelf or esNoTipado:
-                    puntajeTipo += 1
+                return False
 
             return puntajeTipo
 
@@ -350,15 +362,19 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
                     puntajeFirma += estePuntaje 
                 else:
                     return False
-            
             for nombreNominal, valorNominal in vistaNominales:
+
                 if nombreNominal not in parametrosFuncion and type(self).__tieneVarNom(parametrosFuncion):
                     varNom : Parámetro | None = next((p for p in parametrosFuncion.values() if p.kind == p.VAR_KEYWORD),None)
+
                     if varNom is not None:
+
                         estePuntaje = validarTipoParametro(valorNominal,varNom)
+
                     else:
                         return False
                 elif nombreNominal not in parametrosFuncion:
+
                         return False
                 else:
                     estePuntaje = validarTipoParametro(valorNominal,parametrosFuncion[nombreNominal])
@@ -379,9 +395,9 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             cantidadPosicionales    : int = len(parametrosFuncion) if type(self).__tieneVarPos(parametrosFuncion) else len(posicionales) 
             cantidadNominales       : int = len({nom : nominales[nom] for nom in parametrosFuncion if nom in nominales}) if (type(self).__tieneVarNom(parametrosFuncion) or type(self).__tieneSoloNom(parametrosFuncion)) else len(nominales)
             cantidadPorDefecto      : int = type(self).__tienePorDefecto(parametrosFuncion) if type(self).__tienePorDefecto(parametrosFuncion) else 0
-            iteradorPosicionales : Iterador[tuple[Cualquiera,str]] = zip(posicionales, list(parametrosFuncion)[:cantidadPosicionales]) 
+            iteradorPosicionales : Iterador[tuple[Cualquiera,str]] = _sobrecargar.__armarIteradorPosicionales(posicionales, parametrosFuncion)
             vistaNominales : VistaElementos[str,Cualquiera] = nominales.items()
-            
+
             if (len(parametrosFuncion) == 0 or not (type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion))) and len(parametrosFuncion) != (len(posicionales) + len(nominales)): continue             
             if len(parametrosFuncion) - (cantidadPosicionales + cantidadNominales) == 0 and not(type(self).__tieneVariables(parametrosFuncion) or type(self).__tienePorDefecto(parametrosFuncion)):
                 puntajeLongitud += 3
@@ -392,8 +408,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             else:
                 continue
 
-            
             puntajeValidacionFirma : int | bool = validarFirma(parametrosFuncion,cantidadPosicionales,iteradorPosicionales,vistaNominales) 
+
             if puntajeValidacionFirma:
                 esteCandidato : Candidato = Candidato(puntaje=(puntajeLongitud+2*puntajeValidacionFirma),objetoFuncion=función,firmaFuncion=firma)
                 candidatos.append(esteCandidato)
@@ -402,7 +418,12 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         if candidatos:
             if len(candidatos)>1:
                 candidatos.sort(key= lambda c: c.puntaje, reverse=True)
-            self.__debug(f"Candidatos: \n\t- {"\n\t- ".join(' | '.join([str(i) for i in c if not callable(i)]) for c in candidatos)}")
+            self.__debug(                
+                f"\tParámetros provistos" 
+                f"\n\t- Posicionales: {', '.join(p.__name__ for p in map(type, posicionales))}"
+                f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}' for k, v in nominales.items())}"
+                f"\n\tCandidatos: \n\t- {"\n\t- ".join(' | '.join([str(i) for i in c if not callable(i)]) for c in candidatos)}"
+            )
             mejorFuncion = candidatos[0].objetoFuncion
             if self.__cache is not None:
                 parametros = (
@@ -510,6 +531,120 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         for parametro in parametrosFuncion.values():
             if parametro.kind == Parámetro.KEYWORD_ONLY: return True
         return False
+
+    @staticmethod
+    def __desenvolverTipoCompuesto(tipoAnotado: Cualquiera) -> Tupla[Union[type, Tupla[type, ...]], Union[None, type, Tupla[type, ...]]]:
+        """
+        Desenvuelve un tipo anotado en una tupla:
+        (tipo_base, tipo_parametrico)
+
+        - tipo_base: puede ser un tipo o una tupla de tipos (ej. Union)
+        - tipo_parametrico: tipos internos del contenedor si aplica, o None
+        """
+        origen = obtenerOrigen(tipoAnotado)
+        args = obtenerArgumentos(tipoAnotado)
+
+        if origen is Literal:
+            return Literal, args
+
+        if origen is Union:
+            tipos_base = []
+            tipos_param = []
+            for arg in args:
+                base, param = _sobrecargar.__desenvolverTipoCompuesto(arg)
+                if isinstance(base, tuple):
+                    tipos_base.extend(base)
+                else:
+                    tipos_base.append(base)
+                if param is not None:
+                    if isinstance(param, tuple):
+                        tipos_param.extend(param)
+                    else:
+                        tipos_param.append(param)
+            return tuple(set(tipos_base)), tuple(set(tipos_param)) if tipos_param else None
+
+        elif origen is not None:
+            tipo_param = args
+            if len(tipo_param) == 1:
+                tipo_param = tipo_param[0]
+            return origen, tipo_param if isinstance(tipo_param, tuple) else (tipo_param,)
+
+        elif isinstance(tipoAnotado, type):
+            return tipoAnotado, None
+
+        return object, None
+
+    @staticmethod
+    def __verificarTipoCompuesto(valor: Cualquiera, tipo: Cualquiera) -> bool:
+        """
+        Verifica si un valor coincide con un tipo, incluyendo contenedores y tipos anidados.
+        """
+        origen = obtenerOrigen(tipo)
+        args = obtenerArgumentos(tipo)
+
+        if tipo is Cualquiera:
+            return True
+        if origen is None or isinstance(tipo, type):
+            return isinstance(valor, tipo)
+
+        if origen is Literal:
+            return valor in args
+
+
+        if origen is Union:
+            return any(_sobrecargar.__verificarTipoCompuesto(valor, sub) for sub in args)
+
+        if origen is tuple:
+            if not isinstance(valor, tuple):
+                return False
+            if len(args) == 1 or len(args) == 2 and args[1] is Ellipsis:
+                # Tupla[T] o Tupla[T, ...] 
+                return all(_sobrecargar.__verificarTipoCompuesto(v, args[0]) for v in valor)
+            if len(args) != len(valor):
+                return False
+            return all(_sobrecargar.__verificarTipoCompuesto(v, t) for v, t in zip(valor, args))
+
+
+        if origen in (list, set, frozenset):
+            if not isinstance(valor, origen):
+                return False
+            [subtipo] = args
+            return all(_sobrecargar.__verificarTipoCompuesto(v, subtipo) for v in valor)
+
+        if origen is dict:
+            if not isinstance(valor, dict) or len(args) != 2:
+                return False
+            tipo_clave, tipo_valor = args
+
+            return all(
+                _sobrecargar.__verificarTipoCompuesto(k, tipo_clave) and
+                _sobrecargar.__verificarTipoCompuesto(v, tipo_valor)
+                for k, v in valor.items()
+            )
+
+        try:
+            return isinstance(valor, tipo)
+        except TypeError:
+            return False
+
+    @staticmethod
+    def __armarIteradorPosicionales(posicionales, parametrosFuncion):
+        nombres = list(parametrosFuncion)
+        resultado = []
+        i = 0
+        for nombre in nombres:
+            parametro = parametrosFuncion[nombre]
+            if parametro.kind == parametro.VAR_POSITIONAL:
+                # al llegar a *args, le doy el resto de posicionales
+                resultado.append((tuple(posicionales[i:]), nombre))
+                break
+            if i < len(posicionales):
+                resultado.append((posicionales[i], nombre))
+                i += 1
+            else:
+                break
+        return iter(resultado)
+
 
 
 def sobrecargar(*args, cache : bool = True, debug : bool = False) ->Llamable:
