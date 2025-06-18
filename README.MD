@@ -1,6 +1,4 @@
-# Sobrecargar
-
-![sobrecargar](https://github.com/Hernanatn/sobrecargar.py/blob/712d64f8963e9905627cf965c3e962d5c2701be2/logo.webp)
+![sobrecargar](https://raw.githubusercontent.com/Hernanatn/sobrecargar.py/refs/heads/master/logo.webp)
 
 [![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
 [![Versión: 4.0.0](https://img.shields.io/badge/version-v4.0.0-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
