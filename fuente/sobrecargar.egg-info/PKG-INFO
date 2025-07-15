@@ -19,7 +19,7 @@ Dynamic: download-url
 Dynamic: home-page
 Dynamic: license-file
 
-# Sobrecargar
+![sobrecargar](https://raw.githubusercontent.com/Hernanatn/sobrecargar.py/refs/heads/master/logo.webp)
 
 [![Hecho por Chaska](https://img.shields.io/badge/hecho_por-Ch'aska-303030.svg)](https://cajadeideas.ar)
 [![Versión: 4.0.1](https://img.shields.io/badge/version-v4.0.1-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
@@ -29,7 +29,7 @@ Dynamic: license-file
 | Idioma  | Docs   | 
 | :---- | ----: |
 | :argentina: :es: | [/REAMDE.MD](/README.MD)   |
-| :us: | [/REAMDE_en.MD](/README.MD)   |
+| :us: | [/REAMDE_en.MD](/README_en.MD)   |
 
 ## Descripción
 
