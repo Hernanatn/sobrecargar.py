@@ -14,7 +14,7 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "4.0.0"
+__version__ = "4.0.1"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
@@ -40,7 +40,7 @@ if info_versión < (3, 9):
 class _SobrecargaDiferida(type):
     """Metaclase que se encarga de inicilizar las sobrecargas de forma diferida, sól oexiste para manejar el caso de sobrecargas a métodos de clase/instancia.
     Al decorar una función/método con @sobrecargar, en vez de crearse una instancia de `sobrecargar`, se crea una instancia de `sobrecargar_Diferida`, la cual 
-    se comporta *como si* fuera `sobrecargar` y retiene todo el estado necesario para construir la verdadera isntancia más adelante, recién la primera vez que 
+    se comporta *como si* fuera `sobrecargar` y retiene todo el estado necesario para construir la verdadera instancia más adelante, recién la primera vez que 
     se llama `()` la función o método sobrecargado se instacia propiamente.
     """
     def __init__(clase, nombre, ancestros, diccionario):
