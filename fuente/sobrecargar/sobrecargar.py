@@ -461,9 +461,11 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             )
     
     def __get__(self, obj, tipoObj):
+        o = obj if obj is not None else tipoObj
+
         class MetodoSobrecargado:
             __doc__ = self.__doc__
-            __call__ = parcial(self.__call__, obj) if obj is not None else parcial(self.__call__, tipoObj)
+            __call__ = staticmethod(parcial(self.__call__, o))
 
         return MetodoSobrecargado()
 
