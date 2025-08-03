@@ -36,10 +36,9 @@ jobs:
 
             $fullOutput | Out-File pruebas_output.txt -Encoding utf8
 
-            # Detectar estado final
             $tieneErrores  = $fullOutput -match 'FAILED\s+\((.*?errors=\d+)'
             $tieneFallos   = $fullOutput -match 'FAILED\s+\((.*?failures=\d+)'
-            $todoOK        = $fullOutput -match '^\s*OK\s*$'
+            $todoOK = $fullOutput | Where-Object { $_ -match '^\s*OK\s*$' }
 
             $lineaSobrecargar = $fullOutput | Where-Object { $_ -match 'sobrecargar\\sobrecargar\.py' }
             if (-not $lineaSobrecargar) {
