@@ -4,6 +4,7 @@
 [![Versión: 4.1.0](https://img.shields.io/badge/version-v4.1.0-green.svg)](https://github.com/hernanatn/github.com/hernanatn/sobrecargar.py/releases/latest)
 [![Versión de Python: 3.9+](https://img.shields.io/badge/Python-3.9_%7C_3.10_%7C_3.11_%7C_3.12_%7C_3.13_%7C_3.14-blue?logo=python)](https://www.python.org/downloads/release/python-3120/)
 [![Licencia: MIT](https://img.shields.io/badge/Licencia-MIT-lightgrey.svg)](LICENSE)
+[![Pruebas](https://github.com/Hernanatn/sobrecargar.py/actions/workflows/pruebas.yaml/badge.svg)](https://github.com/Hernanatn/sobrecargar.py/actions/workflows/pruebas.yaml)
 
 | Idioma  | Docs   | 
 | :---- | ----: |
