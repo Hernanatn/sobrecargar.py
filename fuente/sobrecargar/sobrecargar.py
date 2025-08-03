@@ -14,15 +14,16 @@ Hernan ATN | herni@cajadeideas.ar
 __author__ = "Hernan ATN"
 __copyright__ = "(c) 2023, Hernán A. Teszkiewicz Novick."
 __license__ = "MIT"
-__version__ = "4.0.1"
+__version__ = "4.1.0"
 __email__ = "herni@cajadeideas.ar"
 
 __all__ = ['sobrecargar', 'overload']
 
-from inspect import signature as obtenerfirma, Signature as Firma, Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco, isclass as esClase
+from sobrecargar.firma import obtenerFirma, Firma
+from inspect import Parameter as Parámetro, currentframe as marcoActual, getframeinfo as obtenerInfoMarco, isclass as esClase
 from types import MappingProxyType
-from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos, Literal
-from collections.abc import Sequence as Sequencia, Mapping as Mapeo
+from typing import Callable as Llamable, TypeVar as TipoVariable, Iterator as Iterador, ItemsView as VistaElementos, Any as Cualquiera, List as Lista, Tuple as Tupla, Iterable, Generic as Genérico, Optional as Opcional, Unpack as Desempacar, Union, get_origin as obtenerOrigen, get_args as obtenerArgumentos, Literal, ForwardRef as DeclaracionAdelantada, Dict as Dicc, Set as Conjunto, FrozenSet as ConjuntoCongelado
+from collections.abc import Sequence as Sequencia, Mapping as Mapeo, Callable as TipoLlamable
 from collections import namedtuple as tuplanominada
 from functools import partial as parcial
 from sys import modules as módulos, version_info as info_versión
@@ -35,8 +36,10 @@ else:
     from typing import Self
     
 if info_versión < (3, 9):
-    raise ImportError("Modulo 'sobrecargar' 'overloading' requiere Python 3.9 o superior.")
-    
+    raise ImportError("Módulo 'sobrecargar' requiere Python 3.9 o superior.")
+
+_DEBUG = False
+
 class _SobrecargaDiferida(type):
     """Metaclase que se encarga de inicilizar las sobrecargas de forma diferida, sól oexiste para manejar el caso de sobrecargas a métodos de clase/instancia.
     Al decorar una función/método con @sobrecargar, en vez de crearse una instancia de `sobrecargar`, se crea una instancia de `sobrecargar_Diferida`, la cual 
@@ -146,11 +149,10 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             self.__nombre = función.__name__
 
         self.__cache : Opcional[dict[tuple[tuple[type[Cualquiera], ...], tuple[tuple[str, type[Cualquiera]], ...]], Llamable[..., Cualquiera]]] = self.__cache if hasattr(self,"_sobrecargar__cache") and self.__cache is not None else {} if cache else None
-        self.__debug : Llamable[[str], None] | Llamable[[str], Llamable[[Cualquiera], None] | None] = self.__debug if hasattr(self,"_sobrecargar__debug") and self.__debug is not None else lambda msj: print(f"[DEBUG] {msj}") if debug else lambda msj: None
+        self.__debug : Llamable[[str], None] | Llamable[[str], Llamable[[Cualquiera], None] | None] = self.__debug if hasattr(self,"_sobrecargar__debug") and self.__debug is not None else lambda msj: print(f"[DEBUG] {msj}") if (debug or _DEBUG) else lambda msj: None
 
         firma : Firma
         funcionSubyacente : Llamable
-        firma, funcionSubyacente = _sobrecargar.__desenvolver(función)
         firma, funcionSubyacente = _sobrecargar.__desenvolver(función)
 
         self.__debug(f"Sobrecarga registrada para: {self.__nombre}. Firma: {firma}")
@@ -195,8 +197,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
 
         if self.__cache is not None:
             parametros = (
-                tuple(type(p) for p in posicionales), 
-                tuple((n, type(v)) for n, v in nominales.items()),
+                tuple(_sobrecargar.__inferirTipo(p) for p in posicionales), 
+                tuple((n, _sobrecargar.__inferirTipo(v)) for n, v in nominales.items()),
             )
             if parametros in self.__cache.keys():
                 func = self.__cache[parametros]
@@ -205,8 +207,10 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
                         f"\n\tParámetros provistos:"
                         f"\n\t- Posicionales: {', '.join(f"{type(p).__name__} [{repr(p)}]" for p in posicionales)}"
                         f"\n\t- Nominales: {', '.join(f'{k}: {type(v).__name__}  [{v}]' for k, v in nominales.items())}"
-                        f"\n\tFirma en caché: {obtenerfirma(func)}"
+                        f"\n\tFirma en caché: {obtenerFirma(func)}"
+                        f"\n\t\tObjeto función: {func}"
                     )
+                self.__debug(f"{self.__cache=}\n")
 
                 return func(*posicionales,**nominales)
             
@@ -229,6 +233,9 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         candidatos : Lista[Candidato] = []
 
         def validarContenedor(valor: _C, parametroContenedor: Parámetro) -> int | bool:
+            self.__debug(
+                f"Validando {valor = }, {parametroContenedor = } en {self.__nombre}"
+            )
             tipoEsperado = parametroContenedor.annotation
 
             if not _sobrecargar.__verificarTipoCompuesto(valor, tipoEsperado):
@@ -282,6 +289,11 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
 
             tipoEsperado = parametroFuncion.annotation
             tipoRecibido = type(valor)
+            self.__debug(
+                f"Validando {valor = }, {parametroFuncion = } en {self.__nombre}"
+                f"\n\t{tipoEsperado = }"
+                f"\n\t{tipoRecibido = }"
+            )
 
             esNoTipado = (tipoEsperado == Cualquiera) or tipoEsperado == parametroFuncion.empty
             porDefecto = parametroFuncion.default
@@ -387,7 +399,9 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             return puntajeFirma
 
         for firma, función in self.sobrecargas.items():
-
+            self.__debug(
+                f"Validando {firma = } en {self.__nombre}"
+            )
             puntajeLongitud : int = 0
             
             parametrosFuncion : MappingProxyType[str,Parámetro] = firma.parameters
@@ -427,8 +441,8 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             mejorFuncion = candidatos[0].objetoFuncion
             if self.__cache is not None:
                 parametros = (
-                    tuple(type(p) for p in posicionales), 
-                    tuple((n, type(v)) for n, v in nominales.items()),
+                    tuple(_sobrecargar.__inferirTipo(p) for p in posicionales), 
+                    tuple((n, _sobrecargar.__inferirTipo(v)) for n, v in nominales.items()),
                 )
                 self.__cache.update({
                     parametros : mejorFuncion
@@ -437,7 +451,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         else:
             marco_actual = marcoActual()
             archivo = __file__
-            linea = 425
+            linea = 437
             if marco_actual:
                 marco_llamada = marco_actual.f_back if marco_actual.f_back else marco_actual
                 info_llamada = obtenerInfoMarco(marco_llamada)
@@ -482,7 +496,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         while hasattr(función, '__wrapped__'):
             función = función.__wrapped__
 
-        firma : Firma = obtenerfirma(función)
+        firma : Firma = obtenerFirma(función)
         return (firma,función)
 
     @staticmethod
@@ -549,6 +563,7 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         if origen is Literal:
             return Literal, args
 
+
         if origen is Union:
             tipos_base = []
             tipos_param = []
@@ -583,24 +598,39 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
         """
         origen = obtenerOrigen(tipo)
         args = obtenerArgumentos(tipo)
+        if _DEBUG:
+            print(
+                f"[DEBUG] Verificando tipo compuesto {valor = }, {tipo = }"
+                f"\n\t{origen = }"
+                f"\n\t{args = }"
+            )
 
+        if isinstance(tipo,DeclaracionAdelantada):
+            return type(valor).__name__ == tipo.__forward_arg__
         if tipo is Cualquiera:
             return True
         if origen is None or isinstance(tipo, type):
-            return isinstance(valor, tipo)
+            if isinstance(tipo,type):
+                return isinstance(valor, tipo)
+            if isinstance(tipo,str):
+                return type(valor).__name__ == tipo
 
         if origen is Literal:
             return valor in args
 
-
+        if origen is Llamable or origen is TipoLlamable:          
+            # HACER:    chequear también parametros... 
+            # HACER:    la implementación acutal, 
+            # HACER:    para una anotación Llamable[[A, B, …], R], 
+            # HACER:    solo valida que sea Llamable
+            return callable(valor)
         if origen is Union:
             return any(_sobrecargar.__verificarTipoCompuesto(valor, sub) for sub in args)
 
         if origen is tuple:
             if not isinstance(valor, tuple):
                 return False
-            if len(args) == 1 or len(args) == 2 and args[1] is Ellipsis:
-                # Tupla[T] o Tupla[T, ...] 
+            if len(args) == 1 or len(args) == 2 and args[1] is Ellipsis: # Tupla[T] o Tupla[T, ...] 
                 return all(_sobrecargar.__verificarTipoCompuesto(v, args[0]) for v in valor)
             if len(args) != len(valor):
                 return False
@@ -628,6 +658,72 @@ class _sobrecargar(metaclass=_SobrecargaDiferida):
             return isinstance(valor, tipo)
         except TypeError:
             return False
+ 
+    @staticmethod
+    def __inferirTipo(valor) -> object:
+        """
+        Infiero un tipo compatible con las anotaciones de typing
+        que refleje la estructura de `valor`.
+        """
+        if valor is None:
+            return type(None)
+
+        
+        tipo = type(valor)
+        if tipo in (int, float, str, bool, bytes):
+            return tipo
+
+        
+        if isinstance(valor, list):
+            if valor:
+                subtipos = []
+                for v in valor:
+                    subtipos.append(_sobrecargar.__inferirTipo(v))                    
+                return Lista[Union[*subtipos]]
+            return list  
+
+        
+        if isinstance(valor, set):
+            if valor:
+                subtipos = []
+                for v in valor:
+                    subtipos.append(_sobrecargar.__inferirTipo(v))                    
+                return Conjunto[Union[*subtipos]]
+                
+                
+            return set
+
+        if isinstance(valor, frozenset):
+            if valor:
+                subtipos = []
+                for v in valor:
+                    subtipos.append(_sobrecargar.__inferirTipo(v))                    
+                return ConjuntoCongelado[Union[*subtipos]]
+                
+                
+            return frozenset
+
+        
+        if isinstance(valor, dict):
+            if valor:
+                k, v = next(iter(valor.items()))
+                tk = _sobrecargar.__inferirTipo(k)
+                tv = _sobrecargar.__inferirTipo(v)
+                return Dicc[tk, tv]
+            return dict
+
+        
+        if isinstance(valor, tuple):
+            
+            if valor:
+                tipos = tuple(_sobrecargar.__inferirTipo(x) for x in valor)
+                if all(t == tipos[0] for t in tipos):
+                    return Tupla[tipos[0], ...]
+                return Tupla[*tipos]  
+            return tuple
+
+        
+        return tipo
 
     @staticmethod
     def __armarIteradorPosicionales(posicionales, parametrosFuncion):
