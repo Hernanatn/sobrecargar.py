@@ -37,7 +37,7 @@ jobs:
 
             $tieneErrores  = $fullOutput -match 'FAILED\s+\((.*?errors=\d+)'
             $tieneFallos   = $fullOutput -match 'FAILED\s+\((.*?failures=\d+)'
-            $todoOK = $fullOutput | Where-Object { $_ -match 'OK' }
+            $todoOK = ($fullOutput -join "`n") -match "(?m)^OK$"
 
             $lineaSobrecargar = $fullOutput | Where-Object { $_ -match 'sobrecargar\\sobrecargar\.py' }
             if (-not $lineaSobrecargar) {
