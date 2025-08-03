@@ -1,3 +1,5 @@
+$fuente = "fuente"
+cd $fuente;
 $salida = "sobrecargar/pruebas/reportes"
 if (-not (Test-Path $salida)) {
     New-Item -ItemType Directory -Path $salida | Out-Null
@@ -28,3 +30,4 @@ coverage html --rcfile=$rcfile
 coverage xml --rcfile=$rcfile
 
 Write-Host "`nReporte guardado en $salida" -ForegroundColor Green
+cd ..
