@@ -20,9 +20,9 @@ if ($args.Count -gt 0) {
     }
 
     $tests = $targets -join " "
-    coverage run --rcfile=$rcfile -m unittest $tests
+    coverage run --omit="*/pruebas/*" --rcfile=$rcfile -m unittest $tests
 } else {
-    coverage run --rcfile=$rcfile -m sobrecargar.pruebas
+    coverage run --omit="*/pruebas/*" --rcfile=$rcfile -m sobrecargar.pruebas
 }
 
 coverage report --rcfile=$rcfile
